@@ -25,6 +25,11 @@
         <SolidColorBrush x:Key="BrushWarningBorder" Color="#FDBA74"/>
         <SolidColorBrush x:Key="BrushInfoSurface" Color="#EFF6FF"/>
         <SolidColorBrush x:Key="BrushInfoBorder" Color="#BFDBFE"/>
+        <SolidColorBrush x:Key="BrushSidebarBackground" Color="#1E293B"/>
+        <SolidColorBrush x:Key="BrushSidebarBorder" Color="#0F172A"/>
+        <SolidColorBrush x:Key="BrushSidebarText" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushSidebarMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushRowHover" Color="#F1F5F9"/>
     </Application.Resources>
 
     <Application.DataTemplates>
@@ -40,6 +45,7 @@
 
         <Style Selector="TextBox">
             <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="4"/>
@@ -113,21 +119,24 @@
         </Style>
 
         <Style Selector="TextBlock.label">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource BrushSubtleText}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="LetterSpacing" Value="1"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
         <Style Selector="TextBlock.value">
-            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
         <Style Selector="TextBlock.keyValue">
-            <Setter Property="FontSize" Value="18"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
@@ -161,15 +170,17 @@
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Padding" Value="12,10"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Foreground" Value="{StaticResource BrushSidebarText}"/>
         </Style>
 
         <Style Selector="Button.nav:pointerover">
-            <Setter Property="Background" Value="{StaticResource BrushSoftSurface}"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
         </Style>
 
         <Style Selector="Button.nav.selected">
-            <Setter Property="Background" Value="{StaticResource BrushAccentSurface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BrushAccentBorder}"/>
+            <Setter Property="Background" Value="#33FFFFFF"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
         </Style>
 
         <Style Selector="Button.primary">
@@ -218,14 +229,21 @@
             <Setter Property="Padding" Value="16,0"/>
         </Style>
 
+        <Style Selector="Border.searchHeroInputHost">
+            <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BoxShadow" Value="0 4 12 0 #1A000000"/>
+        </Style>
+
         <Style Selector="TextBox.searchHeroBox">
             <Setter Property="MinHeight" Value="56"/>
             <Setter Property="FontSize" Value="18"/>
-            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="42,0,14,0"/>
-            <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BrushAccentBorder}"/>
-            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
         <Style Selector="TextBox:focus">
@@ -236,6 +254,19 @@
         <Style Selector="ComboBox:focus">
             <Setter Property="BorderBrush" Value="{StaticResource BrushAccentText}"/>
             <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+
+        <Style Selector="ListBoxItem /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource BrushRowHover}"/>
         </Style>
     </Application.Styles>
 </Application>
