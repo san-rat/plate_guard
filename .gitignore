@@ -482,3 +482,10 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# PlateGuard local test and publish artifacts
+builds/smoke-tests/
+builds/windows-dev/
+builds/windows-release/
+*.db-wal
+*.db-shm
