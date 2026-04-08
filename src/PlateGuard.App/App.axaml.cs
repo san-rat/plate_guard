@@ -39,7 +39,7 @@ public partial class App : Application
                 promotionService,
                 promotionUsageService);
 
-            desktop.MainWindow = new MainWindow(promotionUsageService)
+            desktop.MainWindow = new MainWindow(promotionService, promotionUsageService)
             {
                 DataContext = mainWindowViewModel,
             };

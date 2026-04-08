@@ -21,10 +21,18 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _suppressSearchTextChanged;
 
     public event Action<AddUsageDialogRequest>? AddUsageRequested;
+    public event Action<PromotionDialogRequest>? PromotionDialogRequested;
 
     public ObservableCollection<Promotion> ActivePromotions { get; } = [];
+    public ObservableCollection<PromotionManagementItemViewModel> PromotionManagementItems { get; } = [];
     public ObservableCollection<Vehicle> SearchResults { get; } = [];
     public ObservableCollection<UsageHistoryItemViewModel> SelectedVehicleHistory { get; } = [];
+
+    [ObservableProperty]
+    private bool isSearchSectionVisible = true;
+
+    [ObservableProperty]
+    private bool isPromotionsSectionVisible;
 
     [ObservableProperty]
     private string searchText = string.Empty;
@@ -101,6 +109,48 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool isBusy;
 
+    [ObservableProperty]
+    private PromotionManagementItemViewModel? selectedPromotionManagementItem;
+
+    [ObservableProperty]
+    private string promotionManagementSummary = "Promotions will appear here.";
+
+    [ObservableProperty]
+    private string promotionManagementStatusMessage = "Promotion management is ready.";
+
+    [ObservableProperty]
+    private string promotionManagementEmptyTitle = "No promotions yet";
+
+    [ObservableProperty]
+    private string promotionManagementEmptyMessage = "Create a promotion to start tracking promotion usage.";
+
+    [ObservableProperty]
+    private string selectedManagementPromotionName = "No promotion selected";
+
+    [ObservableProperty]
+    private string selectedManagementPromotionDescription = "-";
+
+    [ObservableProperty]
+    private string selectedManagementPromotionStatus = "-";
+
+    [ObservableProperty]
+    private string selectedManagementPromotionWindow = "-";
+
+    [ObservableProperty]
+    private string selectedManagementPromotionUsageCount = "-";
+
+    [ObservableProperty]
+    private bool hasPromotionManagementItems;
+
+    [ObservableProperty]
+    private bool hasNoPromotionManagementItems = true;
+
+    [ObservableProperty]
+    private bool canEditSelectedPromotion;
+
+    [ObservableProperty]
+    private string togglePromotionStatusButtonText = "Deactivate";
+
     public MainWindowViewModel()
     {
         // Design-time data only.
@@ -133,7 +183,33 @@ public partial class MainWindowViewModel : ViewModelBase
         EligibilityTitle = "Vehicle is eligible for this promotion";
         EligibilityMessage = "No previous usage found for this promotion.";
         CanAddUsage = true;
+        PromotionManagementItems.Add(new PromotionManagementItemViewModel(
+            new Promotion
+            {
+                Id = 1,
+                PromotionName = "Sample Promotion",
+                Description = "New Year offer",
+                IsActive = true,
+                StartDate = DateTime.Today,
+                EndDate = DateTime.Today.AddDays(30)
+            },
+            12));
+        PromotionManagementItems.Add(new PromotionManagementItemViewModel(
+            new Promotion
+            {
+                Id = 2,
+                PromotionName = "Weekend Wash",
+                Description = "Inactive sample",
+                IsActive = false
+            },
+            3));
+        HasPromotionManagementItems = true;
+        HasNoPromotionManagementItems = false;
+        PromotionManagementSummary = "2 promotions configured.";
+        PromotionManagementStatusMessage = "Select a promotion to edit or toggle status.";
+        SelectedPromotionManagementItem = PromotionManagementItems[0];
         UpdateSelectedVehicleSummary(SelectedVehicle);
+        UpdateSelectedManagementPromotionSummary(SelectedPromotionManagementItem);
     }
 
     public MainWindowViewModel(
@@ -186,6 +262,11 @@ public partial class MainWindowViewModel : ViewModelBase
         _ = RefreshSelectionStateAsync();
     }
 
+    partial void OnSelectedPromotionManagementItemChanged(PromotionManagementItemViewModel? value)
+    {
+        UpdateSelectedManagementPromotionSummary(value);
+    }
+
     [RelayCommand]
     private async Task RefreshPromotionsAsync()
     {
@@ -195,7 +276,83 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         await LoadPromotionsAsync();
+        await LoadPromotionManagementAsync();
         await RefreshSelectionStateAsync();
+    }
+
+    [RelayCommand]
+    private void ShowSearchSection()
+    {
+        IsSearchSectionVisible = true;
+        IsPromotionsSectionVisible = false;
+    }
+
+    [RelayCommand]
+    private async Task ShowPromotionsSectionAsync()
+    {
+        IsSearchSectionVisible = false;
+        IsPromotionsSectionVisible = true;
+        await LoadPromotionManagementAsync();
+    }
+
+    [RelayCommand]
+    private async Task RefreshPromotionManagementAsync()
+    {
+        await LoadPromotionManagementAsync();
+    }
+
+    [RelayCommand]
+    private void AddPromotion()
+    {
+        PromotionDialogRequested?.Invoke(new PromotionDialogRequest());
+    }
+
+    [RelayCommand]
+    private void EditSelectedPromotion()
+    {
+        if (SelectedPromotionManagementItem is null)
+        {
+            return;
+        }
+
+        PromotionDialogRequested?.Invoke(new PromotionDialogRequest
+        {
+            Promotion = SelectedPromotionManagementItem.Promotion
+        });
+    }
+
+    [RelayCommand]
+    private async Task ToggleSelectedPromotionStatusAsync()
+    {
+        if (_promotionService is null || SelectedPromotionManagementItem is null)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var promotion = SelectedPromotionManagementItem.Promotion;
+            var updatedPromotion = promotion.IsActive
+                ? await _promotionService.DeactivateAsync(promotion.Id)
+                : await _promotionService.ActivateAsync(promotion.Id);
+
+            await LoadPromotionsAsync();
+            await LoadPromotionManagementAsync(updatedPromotion.Id);
+            await RefreshSelectionStateAsync();
+
+            PromotionManagementStatusMessage = updatedPromotion.IsActive
+                ? $"Activated promotion \"{updatedPromotion.PromotionName}\"."
+                : $"Deactivated promotion \"{updatedPromotion.PromotionName}\".";
+        }
+        catch (Exception exception)
+        {
+            PromotionManagementStatusMessage = $"Could not update promotion status: {exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -235,6 +392,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task InitializeAsync()
     {
         await LoadPromotionsAsync();
+        await LoadPromotionManagementAsync();
         ClearSearchState();
     }
 
@@ -490,6 +648,15 @@ public partial class MainWindowViewModel : ViewModelBase
         StatusMessage = result.Message;
     }
 
+    public async Task RefreshAfterPromotionSavedAsync(Promotion promotion)
+    {
+        await LoadPromotionsAsync();
+        await LoadPromotionManagementAsync(promotion.Id);
+        await RefreshSelectionStateAsync();
+
+        PromotionManagementStatusMessage = $"Saved promotion \"{promotion.PromotionName}\" successfully.";
+    }
+
     private void ClearSearchState()
     {
         SearchResults.Clear();
@@ -558,6 +725,86 @@ public partial class MainWindowViewModel : ViewModelBase
 
         detailParts.Add(promotion.IsActive ? "Active now" : "Inactive");
         SelectedPromotionDetails = string.Join(" | ", detailParts);
+    }
+
+    private async Task LoadPromotionManagementAsync(int? preferredPromotionId = null)
+    {
+        if (_promotionService is null || _promotionUsageService is null)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var previousSelectionId = preferredPromotionId ?? SelectedPromotionManagementItem?.PromotionId;
+            var promotions = await _promotionService.GetAllAsync();
+
+            PromotionManagementItems.Clear();
+            foreach (var promotion in promotions)
+            {
+                var usageCount = await _promotionUsageService.GetUsageCountForPromotionAsync(promotion.Id);
+                PromotionManagementItems.Add(new PromotionManagementItemViewModel(promotion, usageCount));
+            }
+
+            HasPromotionManagementItems = PromotionManagementItems.Count > 0;
+            HasNoPromotionManagementItems = !HasPromotionManagementItems;
+            PromotionManagementSummary = HasPromotionManagementItems
+                ? $"{PromotionManagementItems.Count} promotion(s) configured."
+                : "No promotions configured yet.";
+
+            if (!HasPromotionManagementItems)
+            {
+                SelectedPromotionManagementItem = null;
+                UpdateSelectedManagementPromotionSummary(null);
+                PromotionManagementStatusMessage = "Create the first promotion to start using PlateGuard.";
+                return;
+            }
+
+            SelectedPromotionManagementItem = previousSelectionId.HasValue
+                ? PromotionManagementItems.FirstOrDefault(item => item.PromotionId == previousSelectionId.Value)
+                : null;
+
+            SelectedPromotionManagementItem ??= PromotionManagementItems.FirstOrDefault();
+            PromotionManagementStatusMessage = "Select a promotion to edit details or change active status.";
+        }
+        catch (Exception exception)
+        {
+            PromotionManagementItems.Clear();
+            HasPromotionManagementItems = false;
+            HasNoPromotionManagementItems = true;
+            SelectedPromotionManagementItem = null;
+            UpdateSelectedManagementPromotionSummary(null);
+            PromotionManagementSummary = "Promotion list unavailable.";
+            PromotionManagementStatusMessage = $"Could not load promotions: {exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void UpdateSelectedManagementPromotionSummary(PromotionManagementItemViewModel? item)
+    {
+        if (item is null)
+        {
+            SelectedManagementPromotionName = "No promotion selected";
+            SelectedManagementPromotionDescription = "-";
+            SelectedManagementPromotionStatus = "-";
+            SelectedManagementPromotionWindow = "-";
+            SelectedManagementPromotionUsageCount = "-";
+            CanEditSelectedPromotion = false;
+            TogglePromotionStatusButtonText = "Deactivate";
+            return;
+        }
+
+        SelectedManagementPromotionName = item.PromotionName;
+        SelectedManagementPromotionDescription = string.IsNullOrWhiteSpace(item.Description) ? "-" : item.Description;
+        SelectedManagementPromotionStatus = item.StatusText;
+        SelectedManagementPromotionWindow = item.ScheduleText;
+        SelectedManagementPromotionUsageCount = item.UsageCountText;
+        CanEditSelectedPromotion = true;
+        TogglePromotionStatusButtonText = item.IsActive ? "Deactivate" : "Activate";
     }
 
     private void ApplyNoVehicleEligibilityState()

@@ -50,22 +50,21 @@
                 <StackPanel Grid.Row="1"
                             Margin="20,8,20,0"
                             Spacing="8">
-                    <Border Background="#E2E8F0"
-                            CornerRadius="10"
-                            Padding="12,10">
+                    <Button Command="{Binding ShowSearchSectionCommand}"
+                            IsEnabled="{Binding IsPromotionsSectionVisible}"
+                            HorizontalContentAlignment="Left"
+                            MinHeight="42">
                         <TextBlock Text="Search"
                                    FontWeight="SemiBold"/>
-                    </Border>
+                    </Button>
 
-                    <Border Background="#F8FAFC"
-                            BorderBrush="#E2E8F0"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Opacity="0.75"
-                            Padding="12,10">
+                    <Button Command="{Binding ShowPromotionsSectionCommand}"
+                            IsEnabled="{Binding IsSearchSectionVisible}"
+                            HorizontalContentAlignment="Left"
+                            MinHeight="42">
                         <TextBlock Text="Promotions"
-                                   Foreground="#64748B"/>
-                    </Border>
+                                   FontWeight="SemiBold"/>
+                    </Button>
 
                     <Border Background="#F8FAFC"
                             BorderBrush="#E2E8F0"
@@ -92,281 +91,136 @@
                            Margin="20,0,20,20"
                            VerticalAlignment="Bottom"
                            Foreground="#64748B"
-                           Text="V1 shell: search, eligibility, and history."/>
+                           Text="V1 shell: search, usage, and promotion control."/>
             </Grid>
         </Border>
 
         <Grid Grid.Column="1"
-              Margin="24"
-              RowDefinitions="Auto,Auto,*,Auto"
-              RowSpacing="16">
-            <Border Background="White"
-                    BorderBrush="#E2E8F0"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="20">
-                <Grid ColumnDefinitions="*,360"
-                      ColumnSpacing="20">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="Search / Home"
-                                   FontSize="28"
-                                   FontWeight="SemiBold"/>
-                        <TextBlock Text="Search vehicles first, then verify promotion eligibility before saving usage."
-                                   Foreground="#475569"
-                                   TextWrapping="Wrap"/>
-                    </StackPanel>
-
-                    <Border Grid.Column="1"
-                            Background="#F8FAFC"
-                            BorderBrush="#E2E8F0"
-                            BorderThickness="1"
-                            CornerRadius="12"
-                            Padding="14">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Selected Promotion"
-                                       FontWeight="SemiBold"/>
-                            <ComboBox Height="40"
-                                      ItemsSource="{Binding ActivePromotions}"
-                                      SelectedItem="{Binding SelectedPromotion, Mode=TwoWay}">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate x:DataType="core:Promotion">
-                                        <TextBlock Text="{Binding PromotionName}"/>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <TextBlock Text="{Binding SelectedPromotionName}"
-                                       FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding SelectedPromotionDetails}"
-                                       Foreground="#475569"
-                                       TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </Border>
-
-            <Border Grid.Row="1"
-                    Background="White"
-                    BorderBrush="#E2E8F0"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="{Binding SearchModeLabel}"
-                               Foreground="#475569"/>
-                    <Grid ColumnDefinitions="*,Auto,Auto"
-                          ColumnSpacing="12">
-                        <TextBox Grid.Column="0"
-                                 Height="48"
-                                 FontSize="18"
-                                 PlaceholderText="Search by vehicle number, phone number, or owner name"
-                                 Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 />
-                        <Button Grid.Column="1"
-                                MinWidth="150"
-                                Height="48"
-                                Command="{Binding RefreshPromotionsCommand}"
-                                Content="Refresh Promotions"/>
-                        <Button Grid.Column="2"
-                                MinWidth="90"
-                                Height="48"
-                                Command="{Binding ClearSearchCommand}"
-                                Content="Clear"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <Grid Grid.Row="2"
-                  ColumnDefinitions="390,*"
-                  ColumnSpacing="16">
+              Margin="24">
+            <Grid IsVisible="{Binding IsSearchSectionVisible}"
+                  RowDefinitions="Auto,Auto,*,Auto"
+                  RowSpacing="16">
                 <Border Background="White"
                         BorderBrush="#E2E8F0"
                         BorderThickness="1"
                         CornerRadius="14"
-                        Padding="16">
-                    <Grid RowDefinitions="Auto,*">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Search Results"
-                                       FontSize="18"
+                        Padding="20">
+                    <Grid ColumnDefinitions="*,360"
+                          ColumnSpacing="20">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Search / Home"
+                                       FontSize="28"
                                        FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding ResultsSummary}"
+                            <TextBlock Text="Search vehicles first, then verify promotion eligibility before saving usage."
                                        Foreground="#475569"
                                        TextWrapping="Wrap"/>
                         </StackPanel>
 
-                        <Grid Grid.Row="1"
-                              Margin="0,16,0,0">
-                            <ListBox IsVisible="{Binding HasSearchResults}"
-                                     ItemsSource="{Binding SearchResults}"
-                                     SelectedItem="{Binding SelectedVehicle, Mode=TwoWay}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="core:Vehicle">
-                                        <Border Padding="10">
-                                            <StackPanel Spacing="4">
-                                                <TextBlock Text="{Binding VehicleNumberRaw}"
-                                                           FontWeight="SemiBold"/>
-                                                <TextBlock Text="{Binding VehicleNumberNormalized}"
-                                                           Foreground="#475569"/>
-                                                <TextBlock Text="{Binding OwnerName}"
-                                                           Foreground="#334155"/>
-                                                <TextBlock Text="{Binding PhoneNumber}"
-                                                           Foreground="#475569"/>
-                                                <TextBlock Foreground="#64748B">
-                                                    <Run Text="{Binding Brand}"/>
-                                                    <Run Text=" "/>
-                                                    <Run Text="{Binding Model}"/>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-
-                            <Border IsVisible="{Binding HasNoSearchResults}"
-                                    Background="#F8FAFC"
-                                    BorderBrush="#E2E8F0"
-                                    BorderThickness="1"
-                                    CornerRadius="12"
-                                    Padding="24">
-                                <StackPanel VerticalAlignment="Center"
-                                            HorizontalAlignment="Center"
-                                            Spacing="6">
-                                    <TextBlock Text="{Binding EmptyStateTitle}"
-                                               FontSize="18"
-                                               FontWeight="SemiBold"
-                                               HorizontalAlignment="Center"
-                                               TextAlignment="Center"/>
-                                    <TextBlock Text="{Binding EmptyStateMessage}"
-                                               Foreground="#475569"
-                                               HorizontalAlignment="Center"
-                                               TextAlignment="Center"
-                                               TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </Grid>
-                </Border>
-
-                <Grid Grid.Column="1"
-                      RowDefinitions="Auto,Auto,*"
-                      RowSpacing="16">
-                    <Border Background="White"
-                            BorderBrush="#E2E8F0"
-                            BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="16">
-                        <Grid ColumnDefinitions="*,*"
-                              RowDefinitions="Auto,Auto,Auto">
-                            <TextBlock Grid.ColumnSpan="2"
-                                       Text="Selected Vehicle"
-                                       FontSize="18"
-                                       FontWeight="SemiBold"/>
-
-                            <StackPanel Grid.Row="1"
-                                        Margin="0,14,0,0"
-                                        Spacing="4">
-                                <TextBlock Text="Vehicle Number"
-                                           FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding SelectedVehicleNumber}"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="1"
-                                        Grid.Column="1"
-                                        Margin="0,14,0,0"
-                                        Spacing="4">
-                                <TextBlock Text="Owner"
-                                           FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding SelectedVehicleOwner}"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="2"
-                                        Margin="0,14,0,0"
-                                        Spacing="4">
-                                <TextBlock Text="Phone"
-                                           FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding SelectedVehiclePhone}"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="2"
-                                        Grid.Column="1"
-                                        Margin="0,14,0,0"
-                                        Spacing="4">
-                                <TextBlock Text="Brand / Model"
-                                           FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding SelectedVehicleBrandModel}"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <Border Grid.Row="1"
-                            Background="White"
-                            BorderBrush="#E2E8F0"
-                            BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="16">
-                        <Grid ColumnDefinitions="*,Auto"
-                              ColumnSpacing="16">
+                        <Border Grid.Column="1"
+                                Background="#F8FAFC"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="14">
                             <StackPanel Spacing="8">
-                                <TextBlock Text="Eligibility"
-                                           FontSize="18"
+                                <TextBlock Text="Selected Promotion"
                                            FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding EligibilityTitle}"
-                                           FontSize="16"
+                                <ComboBox Height="40"
+                                          ItemsSource="{Binding ActivePromotions}"
+                                          SelectedItem="{Binding SelectedPromotion, Mode=TwoWay}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="core:Promotion">
+                                            <TextBlock Text="{Binding PromotionName}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Text="{Binding SelectedPromotionName}"
                                            FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding EligibilityMessage}"
+                                <TextBlock Text="{Binding SelectedPromotionDetails}"
                                            Foreground="#475569"
                                            TextWrapping="Wrap"/>
                             </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
 
+                <Border Grid.Row="1"
+                        Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="20">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="{Binding SearchModeLabel}"
+                                   Foreground="#475569"/>
+                        <Grid ColumnDefinitions="*,Auto,Auto"
+                              ColumnSpacing="12">
+                            <TextBox Grid.Column="0"
+                                     Height="48"
+                                     FontSize="18"
+                                     PlaceholderText="Search by vehicle number, phone number, or owner name"
+                                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                             <Button Grid.Column="1"
-                                    MinWidth="130"
-                                    Height="40"
-                                    VerticalAlignment="Center"
-                                    Command="{Binding AddUsageCommand}"
-                                    Content="Add Usage"
-                                    IsEnabled="{Binding CanAddUsage}"/>
+                                    MinWidth="150"
+                                    Height="48"
+                                    Command="{Binding RefreshPromotionsCommand}"
+                                    Content="Refresh Promotions"/>
+                            <Button Grid.Column="2"
+                                    MinWidth="90"
+                                    Height="48"
+                                    Command="{Binding ClearSearchCommand}"
+                                    Content="Clear"/>
                         </Grid>
-                    </Border>
+                    </StackPanel>
+                </Border>
 
-                    <Border Grid.Row="2"
-                            Background="White"
+                <Grid Grid.Row="2"
+                      ColumnDefinitions="390,*"
+                      ColumnSpacing="16">
+                    <Border Background="White"
                             BorderBrush="#E2E8F0"
                             BorderThickness="1"
                             CornerRadius="14"
                             Padding="16">
                         <Grid RowDefinitions="Auto,*">
                             <StackPanel Spacing="4">
-                                <TextBlock Text="Promotion History"
+                                <TextBlock Text="Search Results"
                                            FontSize="18"
                                            FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding HistorySummary}"
+                                <TextBlock Text="{Binding ResultsSummary}"
                                            Foreground="#475569"
                                            TextWrapping="Wrap"/>
                             </StackPanel>
 
                             <Grid Grid.Row="1"
                                   Margin="0,16,0,0">
-                                <ListBox IsVisible="{Binding HasHistory}"
-                                         ItemsSource="{Binding SelectedVehicleHistory}">
+                                <ListBox IsVisible="{Binding HasSearchResults}"
+                                         ItemsSource="{Binding SearchResults}"
+                                         SelectedItem="{Binding SelectedVehicle, Mode=TwoWay}">
                                     <ListBox.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:UsageHistoryItemViewModel">
+                                        <DataTemplate x:DataType="core:Vehicle">
                                             <Border Padding="10">
-                                                <Grid ColumnDefinitions="*,Auto,Auto"
-                                                      ColumnSpacing="14">
-                                                    <TextBlock Text="{Binding PromotionName}"
+                                                <StackPanel Spacing="4">
+                                                    <TextBlock Text="{Binding VehicleNumberRaw}"
                                                                FontWeight="SemiBold"/>
-                                                    <TextBlock Grid.Column="1"
-                                                               Text="{Binding ServiceDateText}"
+                                                    <TextBlock Text="{Binding VehicleNumberNormalized}"
                                                                Foreground="#475569"/>
-                                                    <TextBlock Grid.Column="2"
-                                                               Text="{Binding AmountPaidText}"
+                                                    <TextBlock Text="{Binding OwnerName}"
+                                                               Foreground="#334155"/>
+                                                    <TextBlock Text="{Binding PhoneNumber}"
                                                                Foreground="#475569"/>
-                                                </Grid>
+                                                    <TextBlock Foreground="#64748B">
+                                                        <Run Text="{Binding Brand}"/>
+                                                        <Run Text=" "/>
+                                                        <Run Text="{Binding Model}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
 
-                                <Border IsVisible="{Binding HasNoHistory}"
+                                <Border IsVisible="{Binding HasNoSearchResults}"
                                         Background="#F8FAFC"
                                         BorderBrush="#E2E8F0"
                                         BorderThickness="1"
@@ -375,11 +229,12 @@
                                     <StackPanel VerticalAlignment="Center"
                                                 HorizontalAlignment="Center"
                                                 Spacing="6">
-                                        <TextBlock Text="No promotion history"
+                                        <TextBlock Text="{Binding EmptyStateTitle}"
                                                    FontSize="18"
                                                    FontWeight="SemiBold"
-                                                   HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding HistoryEmptyStateMessage}"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"/>
+                                        <TextBlock Text="{Binding EmptyStateMessage}"
                                                    Foreground="#475569"
                                                    HorizontalAlignment="Center"
                                                    TextAlignment="Center"
@@ -389,19 +244,373 @@
                             </Grid>
                         </Grid>
                     </Border>
+
+                    <Grid Grid.Column="1"
+                          RowDefinitions="Auto,Auto,*"
+                          RowSpacing="16">
+                        <Border Background="White"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="16">
+                            <Grid ColumnDefinitions="*,*"
+                                  RowDefinitions="Auto,Auto,Auto">
+                                <TextBlock Grid.ColumnSpan="2"
+                                           Text="Selected Vehicle"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"/>
+
+                                <StackPanel Grid.Row="1"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Vehicle Number"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedVehicleNumber}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="1"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Owner"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedVehicleOwner}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Phone"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedVehiclePhone}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2"
+                                            Grid.Column="1"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Brand / Model"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedVehicleBrandModel}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="1"
+                                Background="White"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="16">
+                            <Grid ColumnDefinitions="*,Auto"
+                                  ColumnSpacing="16">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Eligibility"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding EligibilityTitle}"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding EligibilityMessage}"
+                                               Foreground="#475569"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        MinWidth="130"
+                                        Height="40"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding AddUsageCommand}"
+                                        Content="Add Usage"
+                                        IsEnabled="{Binding CanAddUsage}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="2"
+                                Background="White"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="16">
+                            <Grid RowDefinitions="Auto,*">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Promotion History"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding HistorySummary}"
+                                               Foreground="#475569"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <Grid Grid.Row="1"
+                                      Margin="0,16,0,0">
+                                    <ListBox IsVisible="{Binding HasHistory}"
+                                             ItemsSource="{Binding SelectedVehicleHistory}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:UsageHistoryItemViewModel">
+                                                <Border Padding="10">
+                                                    <Grid ColumnDefinitions="*,Auto,Auto"
+                                                          ColumnSpacing="14">
+                                                        <TextBlock Text="{Binding PromotionName}"
+                                                                   FontWeight="SemiBold"/>
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{Binding ServiceDateText}"
+                                                                   Foreground="#475569"/>
+                                                        <TextBlock Grid.Column="2"
+                                                                   Text="{Binding AmountPaidText}"
+                                                                   Foreground="#475569"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <Border IsVisible="{Binding HasNoHistory}"
+                                            Background="#F8FAFC"
+                                            BorderBrush="#E2E8F0"
+                                            BorderThickness="1"
+                                            CornerRadius="12"
+                                            Padding="24">
+                                        <StackPanel VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center"
+                                                    Spacing="6">
+                                            <TextBlock Text="No promotion history"
+                                                       FontSize="18"
+                                                       FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{Binding HistoryEmptyStateMessage}"
+                                                       Foreground="#475569"
+                                                       HorizontalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </Grid>
+
+                <Border Grid.Row="3"
+                        Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="14,10">
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="#475569"
+                               TextWrapping="Wrap"/>
+                </Border>
             </Grid>
 
-            <Border Grid.Row="3"
-                    Background="White"
-                    BorderBrush="#E2E8F0"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="14,10">
-                <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="#475569"
-                           TextWrapping="Wrap"/>
-            </Border>
+            <Grid IsVisible="{Binding IsPromotionsSectionVisible}"
+                  RowDefinitions="Auto,*,Auto"
+                  RowSpacing="16">
+                <Border Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="20">
+                    <Grid ColumnDefinitions="*,Auto,Auto"
+                          ColumnSpacing="12">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Promotions"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="Create, edit, and activate promotions while keeping usage counts visible."
+                                       Foreground="#475569"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                MinWidth="110"
+                                Height="42"
+                                Command="{Binding RefreshPromotionManagementCommand}"
+                                Content="Refresh"/>
+                        <Button Grid.Column="2"
+                                MinWidth="140"
+                                Height="42"
+                                Command="{Binding AddPromotionCommand}"
+                                Content="Add Promotion"/>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1"
+                      ColumnDefinitions="430,*"
+                      ColumnSpacing="16">
+                    <Border Background="White"
+                            BorderBrush="#E2E8F0"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="16">
+                        <Grid RowDefinitions="Auto,*">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Promotion List"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding PromotionManagementSummary}"
+                                           Foreground="#475569"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+
+                            <Grid Grid.Row="1"
+                                  Margin="0,16,0,0">
+                                <ListBox IsVisible="{Binding HasPromotionManagementItems}"
+                                         ItemsSource="{Binding PromotionManagementItems}"
+                                         SelectedItem="{Binding SelectedPromotionManagementItem, Mode=TwoWay}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PromotionManagementItemViewModel">
+                                            <Border Padding="10">
+                                                <StackPanel Spacing="4">
+                                                    <Grid ColumnDefinitions="*,Auto"
+                                                          ColumnSpacing="12">
+                                                        <TextBlock Text="{Binding PromotionName}"
+                                                                   FontWeight="SemiBold"/>
+                                                        <Border Grid.Column="1"
+                                                                Background="#F8FAFC"
+                                                                BorderBrush="#E2E8F0"
+                                                                BorderThickness="1"
+                                                                CornerRadius="999"
+                                                                Padding="10,4">
+                                                            <TextBlock Text="{Binding StatusText}"
+                                                                       Foreground="#475569"/>
+                                                        </Border>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Description}"
+                                                               Foreground="#475569"
+                                                               TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding ScheduleText}"
+                                                               Foreground="#64748B"/>
+                                                    <TextBlock Text="{Binding UsageCountText}"
+                                                               Foreground="#475569"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <Border IsVisible="{Binding HasNoPromotionManagementItems}"
+                                        Background="#F8FAFC"
+                                        BorderBrush="#E2E8F0"
+                                        BorderThickness="1"
+                                        CornerRadius="12"
+                                        Padding="24">
+                                    <StackPanel VerticalAlignment="Center"
+                                                HorizontalAlignment="Center"
+                                                Spacing="6">
+                                        <TextBlock Text="{Binding PromotionManagementEmptyTitle}"
+                                                   FontSize="18"
+                                                   FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"/>
+                                        <TextBlock Text="{Binding PromotionManagementEmptyMessage}"
+                                                   Foreground="#475569"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Column="1"
+                          RowDefinitions="Auto,*"
+                          RowSpacing="16">
+                        <Border Background="White"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="16">
+                            <Grid ColumnDefinitions="Auto,Auto,*"
+                                  ColumnSpacing="12">
+                                <Button MinWidth="110"
+                                        Height="40"
+                                        Command="{Binding EditSelectedPromotionCommand}"
+                                        Content="Edit Promotion"
+                                        IsEnabled="{Binding CanEditSelectedPromotion}"/>
+                                <Button Grid.Column="1"
+                                        MinWidth="110"
+                                        Height="40"
+                                        Command="{Binding ToggleSelectedPromotionStatusCommand}"
+                                        Content="{Binding TogglePromotionStatusButtonText}"
+                                        IsEnabled="{Binding CanEditSelectedPromotion}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="1"
+                                Background="White"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="16">
+                            <Grid ColumnDefinitions="*,*"
+                                  RowDefinitions="Auto,Auto,Auto,Auto">
+                                <TextBlock Grid.ColumnSpan="2"
+                                           Text="Selected Promotion"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"/>
+
+                                <StackPanel Grid.Row="1"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Promotion Name"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedManagementPromotionName}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="1"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Status"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedManagementPromotionStatus}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Date Window"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedManagementPromotionWindow}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2"
+                                            Grid.Column="1"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Usage Count"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedManagementPromotionUsageCount}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="3"
+                                            Grid.ColumnSpan="2"
+                                            Margin="0,14,0,0"
+                                            Spacing="4">
+                                    <TextBlock Text="Description"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedManagementPromotionDescription}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <Border Grid.Row="2"
+                        Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="14,10">
+                    <TextBlock Text="{Binding PromotionManagementStatusMessage}"
+                               Foreground="#475569"
+                               TextWrapping="Wrap"/>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </Window>

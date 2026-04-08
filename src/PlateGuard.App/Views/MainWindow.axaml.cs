@@ -7,6 +7,7 @@ namespace PlateGuard.App.Views;
 
 public partial class MainWindow : Window
 {
+    private readonly IPromotionService? _promotionService;
     private readonly IPromotionUsageService? _promotionUsageService;
     private MainWindowViewModel? _viewModel;
 
@@ -16,8 +17,9 @@ public partial class MainWindow : Window
         DataContextChanged += OnDataContextChanged;
     }
 
-    public MainWindow(IPromotionUsageService promotionUsageService) : this()
+    public MainWindow(IPromotionService promotionService, IPromotionUsageService promotionUsageService) : this()
     {
+        _promotionService = promotionService;
         _promotionUsageService = promotionUsageService;
     }
 
@@ -26,6 +28,7 @@ public partial class MainWindow : Window
         if (_viewModel is not null)
         {
             _viewModel.AddUsageRequested -= OnAddUsageRequested;
+            _viewModel.PromotionDialogRequested -= OnPromotionDialogRequested;
         }
 
         base.OnClosed(e);
@@ -36,6 +39,7 @@ public partial class MainWindow : Window
         if (_viewModel is not null)
         {
             _viewModel.AddUsageRequested -= OnAddUsageRequested;
+            _viewModel.PromotionDialogRequested -= OnPromotionDialogRequested;
         }
 
         _viewModel = DataContext as MainWindowViewModel;
@@ -43,6 +47,7 @@ public partial class MainWindow : Window
         if (_viewModel is not null)
         {
             _viewModel.AddUsageRequested += OnAddUsageRequested;
+            _viewModel.PromotionDialogRequested += OnPromotionDialogRequested;
         }
     }
 
@@ -63,6 +68,26 @@ public partial class MainWindow : Window
         if (wasSaved == true && dialogViewModel.LastSaveResult is not null)
         {
             await _viewModel.RefreshAfterUsageSavedAsync(dialogViewModel.LastSaveResult);
+        }
+    }
+
+    private async void OnPromotionDialogRequested(PromotionDialogRequest request)
+    {
+        if (_promotionService is null || _viewModel is null)
+        {
+            return;
+        }
+
+        var dialogViewModel = new PromotionDialogViewModel(_promotionService, request);
+        var dialogWindow = new PromotionDialogWindow
+        {
+            DataContext = dialogViewModel
+        };
+
+        var wasSaved = await dialogWindow.ShowDialog<bool?>(this);
+        if (wasSaved == true && dialogViewModel.LastSavedPromotion is not null)
+        {
+            await _viewModel.RefreshAfterPromotionSavedAsync(dialogViewModel.LastSavedPromotion);
         }
     }
 }
