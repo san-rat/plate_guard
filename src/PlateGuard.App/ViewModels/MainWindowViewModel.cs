@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,17 +23,24 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public event Action<AddUsageDialogRequest>? AddUsageRequested;
     public event Action<PromotionDialogRequest>? PromotionDialogRequested;
+    public event Action<EditUsageDialogRequest>? EditUsageRequested;
+    public event Action<DeleteUsageDialogRequest>? DeleteUsageRequested;
 
     public ObservableCollection<Promotion> ActivePromotions { get; } = [];
     public ObservableCollection<PromotionManagementItemViewModel> PromotionManagementItems { get; } = [];
     public ObservableCollection<Vehicle> SearchResults { get; } = [];
     public ObservableCollection<UsageHistoryItemViewModel> SelectedVehicleHistory { get; } = [];
+    public ObservableCollection<HistoryPromotionFilterOptionViewModel> HistoryPromotionFilters { get; } = [];
+    public ObservableCollection<HistoryRecordItemViewModel> HistoryRecords { get; } = [];
 
     [ObservableProperty]
     private bool isSearchSectionVisible = true;
 
     [ObservableProperty]
     private bool isPromotionsSectionVisible;
+
+    [ObservableProperty]
+    private bool isHistorySectionVisible;
 
     [ObservableProperty]
     private string searchText = string.Empty;
@@ -151,6 +159,78 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string togglePromotionStatusButtonText = "Deactivate";
 
+    [ObservableProperty]
+    private HistoryPromotionFilterOptionViewModel? selectedHistoryPromotionFilter;
+
+    [ObservableProperty]
+    private HistoryRecordItemViewModel? selectedHistoryRecord;
+
+    [ObservableProperty]
+    private string historySearchText = string.Empty;
+
+    [ObservableProperty]
+    private string historyDateFromText = string.Empty;
+
+    [ObservableProperty]
+    private string historyDateToText = string.Empty;
+
+    [ObservableProperty]
+    private string historyRecordsSummary = "Records will appear here.";
+
+    [ObservableProperty]
+    private string historyRecordsStatusMessage = "Review and maintain promotion records here.";
+
+    [ObservableProperty]
+    private string historyRecordsEmptyTitle = "No records yet";
+
+    [ObservableProperty]
+    private string historyRecordsEmptyMessage = "Add usage records to review and manage them here.";
+
+    [ObservableProperty]
+    private bool hasHistoryRecords;
+
+    [ObservableProperty]
+    private bool hasNoHistoryRecords = true;
+
+    [ObservableProperty]
+    private string selectedHistoryVehicleNumber = "No record selected";
+
+    [ObservableProperty]
+    private string selectedHistoryPromotionName = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryServiceDate = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryOwner = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryPhone = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryBrandModel = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryAmountPaid = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryMileage = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryPricing = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryNotes = "-";
+
+    [ObservableProperty]
+    private string selectedHistoryRecordStatus = "-";
+
+    [ObservableProperty]
+    private bool canEditSelectedHistoryRecord;
+
+    [ObservableProperty]
+    private bool canDeleteSelectedHistoryRecord;
+
     public MainWindowViewModel()
     {
         // Design-time data only.
@@ -208,8 +288,37 @@ public partial class MainWindowViewModel : ViewModelBase
         PromotionManagementSummary = "2 promotions configured.";
         PromotionManagementStatusMessage = "Select a promotion to edit or toggle status.";
         SelectedPromotionManagementItem = PromotionManagementItems[0];
+        HistoryPromotionFilters.Add(new HistoryPromotionFilterOptionViewModel(null, "All Promotions"));
+        HistoryPromotionFilters.Add(new HistoryPromotionFilterOptionViewModel(1, "Sample Promotion"));
+        SelectedHistoryPromotionFilter = HistoryPromotionFilters[0];
+        HistoryRecords.Add(new HistoryRecordItemViewModel(new PromotionUsageRecord
+        {
+            PromotionUsageId = 1,
+            VehicleId = 1,
+            PromotionId = 1,
+            ServiceDate = DateTime.Today,
+            VehicleNumberRaw = "CAB-1234",
+            VehicleNumberNormalized = "CAB1234",
+            PhoneNumber = "0771234567",
+            OwnerName = "Nimal Perera",
+            Brand = "Toyota",
+            Model = "Corolla",
+            PromotionName = "Sample Promotion",
+            PromotionIsActive = true,
+            Mileage = 45000,
+            NormalPrice = 7500,
+            DiscountedPrice = 5000,
+            AmountPaid = 5000,
+            Notes = "Design preview"
+        }));
+        SelectedHistoryRecord = HistoryRecords[0];
+        HasHistoryRecords = true;
+        HasNoHistoryRecords = false;
+        HistoryRecordsSummary = "1 record available.";
+        HistoryRecordsStatusMessage = "Select a record to edit or delete it.";
         UpdateSelectedVehicleSummary(SelectedVehicle);
         UpdateSelectedManagementPromotionSummary(SelectedPromotionManagementItem);
+        UpdateSelectedHistoryRecordSummary(SelectedHistoryRecord);
     }
 
     public MainWindowViewModel(
@@ -267,6 +376,11 @@ public partial class MainWindowViewModel : ViewModelBase
         UpdateSelectedManagementPromotionSummary(value);
     }
 
+    partial void OnSelectedHistoryRecordChanged(HistoryRecordItemViewModel? value)
+    {
+        UpdateSelectedHistoryRecordSummary(value);
+    }
+
     [RelayCommand]
     private async Task RefreshPromotionsAsync()
     {
@@ -277,6 +391,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         await LoadPromotionsAsync();
         await LoadPromotionManagementAsync();
+        await LoadHistoryRecordsAsync();
         await RefreshSelectionStateAsync();
     }
 
@@ -285,6 +400,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         IsSearchSectionVisible = true;
         IsPromotionsSectionVisible = false;
+        IsHistorySectionVisible = false;
     }
 
     [RelayCommand]
@@ -292,13 +408,39 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         IsSearchSectionVisible = false;
         IsPromotionsSectionVisible = true;
+        IsHistorySectionVisible = false;
         await LoadPromotionManagementAsync();
+    }
+
+    [RelayCommand]
+    private async Task ShowHistorySectionAsync()
+    {
+        IsSearchSectionVisible = false;
+        IsPromotionsSectionVisible = false;
+        IsHistorySectionVisible = true;
+        await LoadHistoryRecordsAsync();
     }
 
     [RelayCommand]
     private async Task RefreshPromotionManagementAsync()
     {
         await LoadPromotionManagementAsync();
+    }
+
+    [RelayCommand]
+    private async Task RefreshHistoryRecordsAsync()
+    {
+        await LoadHistoryRecordsAsync();
+    }
+
+    [RelayCommand]
+    private async Task ClearHistoryFiltersAsync()
+    {
+        HistorySearchText = string.Empty;
+        HistoryDateFromText = string.Empty;
+        HistoryDateToText = string.Empty;
+        SelectedHistoryPromotionFilter = HistoryPromotionFilters.FirstOrDefault();
+        await LoadHistoryRecordsAsync();
     }
 
     [RelayCommand]
@@ -356,6 +498,34 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void EditSelectedHistoryRecord()
+    {
+        if (SelectedHistoryRecord is null)
+        {
+            return;
+        }
+
+        EditUsageRequested?.Invoke(new EditUsageDialogRequest
+        {
+            Record = SelectedHistoryRecord.Record
+        });
+    }
+
+    [RelayCommand]
+    private void DeleteSelectedHistoryRecord()
+    {
+        if (SelectedHistoryRecord is null)
+        {
+            return;
+        }
+
+        DeleteUsageRequested?.Invoke(new DeleteUsageDialogRequest
+        {
+            Record = SelectedHistoryRecord.Record
+        });
+    }
+
+    [RelayCommand]
     private void ClearSearch()
     {
         SearchText = string.Empty;
@@ -393,6 +563,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await LoadPromotionsAsync();
         await LoadPromotionManagementAsync();
+        await LoadHistoryRecordsAsync();
         ClearSearchState();
     }
 
@@ -430,6 +601,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 : null;
 
             SelectedPromotion ??= ActivePromotions.FirstOrDefault();
+            UpdateHistoryPromotionFilters();
             UpdateSelectedPromotionSummary(SelectedPromotion);
             StatusMessage = ActivePromotions.Count == 0
                 ? "No active promotions configured. Create a promotion to start checking eligibility."
@@ -652,9 +824,27 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await LoadPromotionsAsync();
         await LoadPromotionManagementAsync(promotion.Id);
+        await LoadHistoryRecordsAsync();
         await RefreshSelectionStateAsync();
 
         PromotionManagementStatusMessage = $"Saved promotion \"{promotion.PromotionName}\" successfully.";
+    }
+
+    public async Task RefreshAfterUsageRecordUpdatedAsync()
+    {
+        await LoadHistoryRecordsAsync(SelectedHistoryRecord?.PromotionUsageId);
+        await RefreshCurrentSearchAsync();
+        await RefreshSelectionStateAsync();
+        HistoryRecordsStatusMessage = "Record updated successfully.";
+    }
+
+    public async Task RefreshAfterUsageDeletedAsync()
+    {
+        await LoadHistoryRecordsAsync();
+        await LoadPromotionManagementAsync();
+        await RefreshCurrentSearchAsync();
+        await RefreshSelectionStateAsync();
+        HistoryRecordsStatusMessage = "Record deleted successfully.";
     }
 
     private void ClearSearchState()
@@ -784,6 +974,75 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private async Task LoadHistoryRecordsAsync(int? preferredPromotionUsageId = null)
+    {
+        if (_promotionUsageService is null)
+        {
+            return;
+        }
+
+        var dateValidationMessage = TryBuildHistoryQuery(out var query);
+        if (dateValidationMessage is not null)
+        {
+            HistoryRecords.Clear();
+            HasHistoryRecords = false;
+            HasNoHistoryRecords = true;
+            SelectedHistoryRecord = null;
+            UpdateSelectedHistoryRecordSummary(null);
+            HistoryRecordsSummary = "History filter is invalid.";
+            HistoryRecordsStatusMessage = dateValidationMessage;
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var previousSelectionId = preferredPromotionUsageId ?? SelectedHistoryRecord?.PromotionUsageId;
+            var records = await _promotionUsageService.SearchUsageRecordsAsync(query);
+
+            HistoryRecords.Clear();
+            foreach (var record in records)
+            {
+                HistoryRecords.Add(new HistoryRecordItemViewModel(record));
+            }
+
+            HasHistoryRecords = HistoryRecords.Count > 0;
+            HasNoHistoryRecords = !HasHistoryRecords;
+            HistoryRecordsSummary = HasHistoryRecords
+                ? $"{HistoryRecords.Count} record(s) found."
+                : "No records matched the current filters.";
+
+            if (!HasHistoryRecords)
+            {
+                SelectedHistoryRecord = null;
+                UpdateSelectedHistoryRecordSummary(null);
+                HistoryRecordsStatusMessage = "Adjust the filters or add usage records.";
+                return;
+            }
+
+            SelectedHistoryRecord = previousSelectionId.HasValue
+                ? HistoryRecords.FirstOrDefault(record => record.PromotionUsageId == previousSelectionId.Value)
+                : null;
+
+            SelectedHistoryRecord ??= HistoryRecords.FirstOrDefault();
+            HistoryRecordsStatusMessage = "Select a record to review, edit, or delete it.";
+        }
+        catch (Exception exception)
+        {
+            HistoryRecords.Clear();
+            HasHistoryRecords = false;
+            HasNoHistoryRecords = true;
+            SelectedHistoryRecord = null;
+            UpdateSelectedHistoryRecordSummary(null);
+            HistoryRecordsSummary = "History is unavailable.";
+            HistoryRecordsStatusMessage = $"Could not load records: {exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private void UpdateSelectedManagementPromotionSummary(PromotionManagementItemViewModel? item)
     {
         if (item is null)
@@ -805,6 +1064,94 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedManagementPromotionUsageCount = item.UsageCountText;
         CanEditSelectedPromotion = true;
         TogglePromotionStatusButtonText = item.IsActive ? "Deactivate" : "Activate";
+    }
+
+    private void UpdateSelectedHistoryRecordSummary(HistoryRecordItemViewModel? item)
+    {
+        if (item is null)
+        {
+            SelectedHistoryVehicleNumber = "No record selected";
+            SelectedHistoryPromotionName = "-";
+            SelectedHistoryServiceDate = "-";
+            SelectedHistoryOwner = "-";
+            SelectedHistoryPhone = "-";
+            SelectedHistoryBrandModel = "-";
+            SelectedHistoryAmountPaid = "-";
+            SelectedHistoryMileage = "-";
+            SelectedHistoryPricing = "-";
+            SelectedHistoryNotes = "-";
+            SelectedHistoryRecordStatus = "-";
+            CanEditSelectedHistoryRecord = false;
+            CanDeleteSelectedHistoryRecord = false;
+            return;
+        }
+
+        SelectedHistoryVehicleNumber = item.VehicleNumberDisplay;
+        SelectedHistoryPromotionName = item.PromotionName;
+        SelectedHistoryServiceDate = item.ServiceDateText;
+        SelectedHistoryOwner = item.OwnerName;
+        SelectedHistoryPhone = item.PhoneNumber;
+        SelectedHistoryBrandModel = item.BrandModelText;
+        SelectedHistoryAmountPaid = item.AmountPaidText;
+        SelectedHistoryMileage = item.MileageText;
+        SelectedHistoryPricing = item.PricingText;
+        SelectedHistoryNotes = item.NotesText;
+        SelectedHistoryRecordStatus = item.StatusText;
+        CanEditSelectedHistoryRecord = true;
+        CanDeleteSelectedHistoryRecord = true;
+    }
+
+    private void UpdateHistoryPromotionFilters()
+    {
+        var previousPromotionId = SelectedHistoryPromotionFilter?.PromotionId;
+        HistoryPromotionFilters.Clear();
+        HistoryPromotionFilters.Add(new HistoryPromotionFilterOptionViewModel(null, "All Promotions"));
+
+        foreach (var promotion in _promotionLookup.Values.OrderBy(promotion => promotion.PromotionName))
+        {
+            HistoryPromotionFilters.Add(new HistoryPromotionFilterOptionViewModel(promotion.Id, promotion.PromotionName));
+        }
+
+        SelectedHistoryPromotionFilter = HistoryPromotionFilters.FirstOrDefault(filter => filter.PromotionId == previousPromotionId)
+            ?? HistoryPromotionFilters.FirstOrDefault();
+    }
+
+    private string? TryBuildHistoryQuery(out PromotionUsageRecordQuery query)
+    {
+        query = new PromotionUsageRecordQuery
+        {
+            SearchText = string.IsNullOrWhiteSpace(HistorySearchText) ? null : HistorySearchText.Trim(),
+            PromotionId = SelectedHistoryPromotionFilter?.PromotionId
+        };
+
+        if (!TryParseOptionalFilterDate(HistoryDateFromText, out var dateFrom))
+        {
+            return "From date must be a valid date in yyyy-MM-dd format.";
+        }
+
+        if (!TryParseOptionalFilterDate(HistoryDateToText, out var dateTo))
+        {
+            return "To date must be a valid date in yyyy-MM-dd format.";
+        }
+
+        if (dateFrom.HasValue && dateTo.HasValue && dateTo.Value.Date < dateFrom.Value.Date)
+        {
+            return "To date cannot be earlier than from date.";
+        }
+
+        query.DateFrom = dateFrom;
+        query.DateTo = dateTo;
+        return null;
+    }
+
+    private async Task RefreshCurrentSearchAsync()
+    {
+        if (_vehicleService is null || string.IsNullOrWhiteSpace(SearchText))
+        {
+            return;
+        }
+
+        await ExecuteSearchAsync(SearchText, CancellationToken.None);
     }
 
     private void ApplyNoVehicleEligibilityState()
@@ -869,6 +1216,25 @@ public partial class MainWindowViewModel : ViewModelBase
             (null, DateTime endDate) => $"Ends {endDate:yyyy-MM-dd}",
             _ => string.Empty
         };
+    }
+
+    private static bool TryParseOptionalFilterDate(string value, out DateTime? parsedDate)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            parsedDate = null;
+            return true;
+        }
+
+        if (DateTime.TryParseExact(value.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var exactDate) ||
+            DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out exactDate))
+        {
+            parsedDate = exactDate.Date;
+            return true;
+        }
+
+        parsedDate = null;
+        return false;
     }
 
     private static SearchMode DetectSearchMode(string query)

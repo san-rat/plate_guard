@@ -36,6 +36,11 @@ public sealed class PromotionUsageService(
         return _promotionUsageRepository.GetByVehicleIdAsync(vehicleId, cancellationToken);
     }
 
+    public Task<IReadOnlyList<PromotionUsageRecord>> SearchUsageRecordsAsync(PromotionUsageRecordQuery query, CancellationToken cancellationToken = default)
+    {
+        return _promotionUsageRepository.SearchRecordsAsync(query, cancellationToken);
+    }
+
     public Task<int> GetUsageCountForPromotionAsync(int promotionId, CancellationToken cancellationToken = default)
     {
         return _promotionUsageRepository.CountByPromotionIdAsync(promotionId, cancellationToken);
@@ -103,6 +108,49 @@ public sealed class PromotionUsageService(
             PromotionUsage = savedUsage,
             CreatedNewVehicle = createdNewVehicle
         };
+    }
+
+    public async Task<OperationResult> UpdateUsageRecordAsync(UpdatePromotionUsageRecordRequest request, CancellationToken cancellationToken = default)
+    {
+        var validationMessage = ValidateUpdateRequest(request);
+        if (validationMessage is not null)
+        {
+            return Failure(validationMessage);
+        }
+
+        var existingUsage = await _promotionUsageRepository.GetByIdAsync(request.PromotionUsageId, cancellationToken);
+        if (existingUsage is null)
+        {
+            return Failure("Promotion usage record was not found.");
+        }
+
+        var vehicle = await _vehicleRepository.GetByIdAsync(existingUsage.VehicleId, cancellationToken);
+        if (vehicle is null)
+        {
+            return Failure("Vehicle record was not found.");
+        }
+
+        existingUsage.ServiceDate = request.ServiceDate;
+        existingUsage.Mileage = request.Mileage;
+        existingUsage.NormalPrice = request.NormalPrice;
+        existingUsage.DiscountedPrice = request.DiscountedPrice;
+        existingUsage.AmountPaid = request.AmountPaid;
+        existingUsage.Notes = NormalizeOptionalText(request.Notes);
+
+        vehicle.PhoneNumber = request.PhoneNumber.Trim();
+        vehicle.OwnerName = NormalizeOptionalText(request.OwnerName);
+        vehicle.Brand = NormalizeOptionalText(request.Brand);
+        vehicle.Model = NormalizeOptionalText(request.Model);
+
+        var usageUpdateResult = await UpdateUsageAsync(existingUsage, cancellationToken);
+        if (!usageUpdateResult.IsSuccess)
+        {
+            return usageUpdateResult;
+        }
+
+        await _vehicleRepository.UpdateAsync(vehicle, cancellationToken);
+
+        return Success("Record updated successfully.");
     }
 
     public async Task<OperationResult> UpdateUsageAsync(PromotionUsage promotionUsage, CancellationToken cancellationToken = default)
@@ -290,6 +338,51 @@ public sealed class PromotionUsageService(
         }
 
         return null;
+    }
+
+    private static string? ValidateUpdateRequest(UpdatePromotionUsageRecordRequest request)
+    {
+        if (request.PromotionUsageId <= 0)
+        {
+            return "Promotion usage id is required.";
+        }
+
+        if (request.ServiceDate == default)
+        {
+            return "Service date is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PhoneNumber))
+        {
+            return "Phone number is required.";
+        }
+
+        if (request.Mileage < 0)
+        {
+            return "Mileage cannot be negative.";
+        }
+
+        if (request.NormalPrice < 0)
+        {
+            return "Normal price cannot be negative.";
+        }
+
+        if (request.DiscountedPrice < 0)
+        {
+            return "Discounted price cannot be negative.";
+        }
+
+        if (request.AmountPaid < 0)
+        {
+            return "Amount paid cannot be negative.";
+        }
+
+        return null;
+    }
+
+    private static string? NormalizeOptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static OperationResult Success(string message) => new() { IsSuccess = true, Message = message };

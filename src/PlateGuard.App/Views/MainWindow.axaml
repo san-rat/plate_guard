@@ -51,7 +51,6 @@
                             Margin="20,8,20,0"
                             Spacing="8">
                     <Button Command="{Binding ShowSearchSectionCommand}"
-                            IsEnabled="{Binding IsPromotionsSectionVisible}"
                             HorizontalContentAlignment="Left"
                             MinHeight="42">
                         <TextBlock Text="Search"
@@ -59,22 +58,18 @@
                     </Button>
 
                     <Button Command="{Binding ShowPromotionsSectionCommand}"
-                            IsEnabled="{Binding IsSearchSectionVisible}"
                             HorizontalContentAlignment="Left"
                             MinHeight="42">
                         <TextBlock Text="Promotions"
                                    FontWeight="SemiBold"/>
                     </Button>
 
-                    <Border Background="#F8FAFC"
-                            BorderBrush="#E2E8F0"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Opacity="0.75"
-                            Padding="12,10">
+                    <Button Command="{Binding ShowHistorySectionCommand}"
+                            HorizontalContentAlignment="Left"
+                            MinHeight="42">
                         <TextBlock Text="History"
-                                   Foreground="#64748B"/>
-                    </Border>
+                                   FontWeight="SemiBold"/>
+                    </Button>
 
                     <Border Background="#F8FAFC"
                             BorderBrush="#E2E8F0"
@@ -607,6 +602,298 @@
                         CornerRadius="14"
                         Padding="14,10">
                     <TextBlock Text="{Binding PromotionManagementStatusMessage}"
+                               Foreground="#475569"
+                               TextWrapping="Wrap"/>
+                </Border>
+            </Grid>
+
+            <Grid IsVisible="{Binding IsHistorySectionVisible}"
+                  RowDefinitions="Auto,*,Auto"
+                  RowSpacing="16">
+                <Border Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="20">
+                    <Grid ColumnDefinitions="*,Auto,Auto"
+                          ColumnSpacing="12">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="History / Records"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="Review, edit, and delete promotion usage records with clear filtering."
+                                       Foreground="#475569"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                MinWidth="110"
+                                Height="42"
+                                Command="{Binding ClearHistoryFiltersCommand}"
+                                Content="Clear Filters"/>
+                        <Button Grid.Column="2"
+                                MinWidth="110"
+                                Height="42"
+                                Command="{Binding RefreshHistoryRecordsCommand}"
+                                Content="Refresh"/>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1"
+                      RowDefinitions="Auto,*"
+                      RowSpacing="16">
+                    <Border Background="White"
+                            BorderBrush="#E2E8F0"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="16">
+                        <Grid ColumnDefinitions="2*,*,Auto,Auto"
+                              ColumnSpacing="12">
+                            <TextBox Text="{Binding HistorySearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="Search by vehicle number, phone, owner, or promotion"/>
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding HistoryPromotionFilters}"
+                                      SelectedItem="{Binding SelectedHistoryPromotionFilter, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:HistoryPromotionFilterOptionViewModel">
+                                        <TextBlock Text="{Binding Label}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBox Grid.Column="2"
+                                     Width="120"
+                                     Text="{Binding HistoryDateFromText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="From yyyy-MM-dd"/>
+                            <TextBox Grid.Column="3"
+                                     Width="120"
+                                     Text="{Binding HistoryDateToText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="To yyyy-MM-dd"/>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="1"
+                          ColumnDefinitions="460,*"
+                          ColumnSpacing="16">
+                        <Border Background="White"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="16">
+                            <Grid RowDefinitions="Auto,*">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Records"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding HistoryRecordsSummary}"
+                                               Foreground="#475569"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <Grid Grid.Row="1"
+                                      Margin="0,16,0,0">
+                                    <ListBox IsVisible="{Binding HasHistoryRecords}"
+                                             ItemsSource="{Binding HistoryRecords}"
+                                             SelectedItem="{Binding SelectedHistoryRecord, Mode=TwoWay}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:HistoryRecordItemViewModel">
+                                                <Border Padding="10">
+                                                    <StackPanel Spacing="4">
+                                                        <Grid ColumnDefinitions="Auto,*,Auto"
+                                                              ColumnSpacing="12">
+                                                            <TextBlock Text="{Binding ServiceDateText}"
+                                                                       Foreground="#475569"/>
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding VehicleNumberDisplay}"
+                                                                       FontWeight="SemiBold"/>
+                                                            <TextBlock Grid.Column="2"
+                                                                       Text="{Binding AmountPaidText}"
+                                                                       Foreground="#475569"/>
+                                                        </Grid>
+                                                        <TextBlock Text="{Binding PromotionName}"
+                                                                   Foreground="#334155"/>
+                                                        <TextBlock Foreground="#475569">
+                                                            <Run Text="{Binding OwnerName}"/>
+                                                            <Run Text=" | "/>
+                                                            <Run Text="{Binding PhoneNumber}"/>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding StatusText}"
+                                                                   Foreground="#64748B"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <Border IsVisible="{Binding HasNoHistoryRecords}"
+                                            Background="#F8FAFC"
+                                            BorderBrush="#E2E8F0"
+                                            BorderThickness="1"
+                                            CornerRadius="12"
+                                            Padding="24">
+                                        <StackPanel VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center"
+                                                    Spacing="6">
+                                            <TextBlock Text="{Binding HistoryRecordsEmptyTitle}"
+                                                       FontSize="18"
+                                                       FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"
+                                                       TextAlignment="Center"/>
+                                            <TextBlock Text="{Binding HistoryRecordsEmptyMessage}"
+                                                       Foreground="#475569"
+                                                       HorizontalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Column="1"
+                              RowDefinitions="Auto,*"
+                              RowSpacing="16">
+                            <Border Background="White"
+                                    BorderBrush="#E2E8F0"
+                                    BorderThickness="1"
+                                    CornerRadius="14"
+                                    Padding="16">
+                                <Grid ColumnDefinitions="Auto,Auto,*"
+                                      ColumnSpacing="12">
+                                    <Button MinWidth="110"
+                                            Height="40"
+                                            Command="{Binding EditSelectedHistoryRecordCommand}"
+                                            Content="Edit Record"
+                                            IsEnabled="{Binding CanEditSelectedHistoryRecord}"/>
+                                    <Button Grid.Column="1"
+                                            MinWidth="110"
+                                            Height="40"
+                                            Command="{Binding DeleteSelectedHistoryRecordCommand}"
+                                            Content="Delete Record"
+                                            IsEnabled="{Binding CanDeleteSelectedHistoryRecord}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="1"
+                                    Background="White"
+                                    BorderBrush="#E2E8F0"
+                                    BorderThickness="1"
+                                    CornerRadius="14"
+                                    Padding="16">
+                                <Grid ColumnDefinitions="*,*"
+                                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                                    <TextBlock Grid.ColumnSpan="2"
+                                               Text="Selected Record"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"/>
+
+                                    <StackPanel Grid.Row="1"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Vehicle Number"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryVehicleNumber}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1"
+                                                Grid.Column="1"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Promotion"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryPromotionName}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Service Date"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryServiceDate}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2"
+                                                Grid.Column="1"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Status"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryRecordStatus}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="3"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Owner"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryOwner}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="3"
+                                                Grid.Column="1"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Phone"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryPhone}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="4"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Brand / Model"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryBrandModel}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="4"
+                                                Grid.Column="1"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Mileage"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryMileage}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="5"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Amount Paid"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryAmountPaid}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="5"
+                                                Grid.Column="1"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Pricing"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryPricing}"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="6"
+                                                Grid.ColumnSpan="2"
+                                                Margin="0,14,0,0"
+                                                Spacing="4">
+                                        <TextBlock Text="Notes"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedHistoryNotes}"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Grid>
+
+                <Border Grid.Row="2"
+                        Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="14,10">
+                    <TextBlock Text="{Binding HistoryRecordsStatusMessage}"
                                Foreground="#475569"
                                TextWrapping="Wrap"/>
                 </Border>

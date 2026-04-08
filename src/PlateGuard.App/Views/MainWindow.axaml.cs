@@ -29,6 +29,8 @@ public partial class MainWindow : Window
         {
             _viewModel.AddUsageRequested -= OnAddUsageRequested;
             _viewModel.PromotionDialogRequested -= OnPromotionDialogRequested;
+            _viewModel.EditUsageRequested -= OnEditUsageRequested;
+            _viewModel.DeleteUsageRequested -= OnDeleteUsageRequested;
         }
 
         base.OnClosed(e);
@@ -40,6 +42,8 @@ public partial class MainWindow : Window
         {
             _viewModel.AddUsageRequested -= OnAddUsageRequested;
             _viewModel.PromotionDialogRequested -= OnPromotionDialogRequested;
+            _viewModel.EditUsageRequested -= OnEditUsageRequested;
+            _viewModel.DeleteUsageRequested -= OnDeleteUsageRequested;
         }
 
         _viewModel = DataContext as MainWindowViewModel;
@@ -48,6 +52,8 @@ public partial class MainWindow : Window
         {
             _viewModel.AddUsageRequested += OnAddUsageRequested;
             _viewModel.PromotionDialogRequested += OnPromotionDialogRequested;
+            _viewModel.EditUsageRequested += OnEditUsageRequested;
+            _viewModel.DeleteUsageRequested += OnDeleteUsageRequested;
         }
     }
 
@@ -88,6 +94,46 @@ public partial class MainWindow : Window
         if (wasSaved == true && dialogViewModel.LastSavedPromotion is not null)
         {
             await _viewModel.RefreshAfterPromotionSavedAsync(dialogViewModel.LastSavedPromotion);
+        }
+    }
+
+    private async void OnEditUsageRequested(EditUsageDialogRequest request)
+    {
+        if (_promotionUsageService is null || _viewModel is null)
+        {
+            return;
+        }
+
+        var dialogViewModel = new EditUsageDialogViewModel(_promotionUsageService, request);
+        var dialogWindow = new EditUsageWindow
+        {
+            DataContext = dialogViewModel
+        };
+
+        var wasSaved = await dialogWindow.ShowDialog<bool?>(this);
+        if (wasSaved == true)
+        {
+            await _viewModel.RefreshAfterUsageRecordUpdatedAsync();
+        }
+    }
+
+    private async void OnDeleteUsageRequested(DeleteUsageDialogRequest request)
+    {
+        if (_promotionUsageService is null || _viewModel is null)
+        {
+            return;
+        }
+
+        var dialogViewModel = new DeleteUsageDialogViewModel(_promotionUsageService, request);
+        var dialogWindow = new DeleteUsageWindow
+        {
+            DataContext = dialogViewModel
+        };
+
+        var wasDeleted = await dialogWindow.ShowDialog<bool?>(this);
+        if (wasDeleted == true)
+        {
+            await _viewModel.RefreshAfterUsageDeletedAsync();
         }
     }
 }
