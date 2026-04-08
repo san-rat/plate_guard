@@ -34,10 +34,14 @@ public partial class App : Application
                 promotionRepository,
                 promotionUsageRepository,
                 settingsRepository);
+            ISettingsService settingsService = new SettingsService(settingsRepository);
+            IExportService exportService = new ExportService(settingsRepository);
             var mainWindowViewModel = new MainWindowViewModel(
                 vehicleService,
                 promotionService,
-                promotionUsageService);
+                promotionUsageService,
+                settingsService,
+                exportService);
 
             desktop.MainWindow = new MainWindow(promotionService, promotionUsageService)
             {

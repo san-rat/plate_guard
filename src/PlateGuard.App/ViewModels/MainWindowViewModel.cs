@@ -17,7 +17,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IVehicleService? _vehicleService;
     private readonly IPromotionService? _promotionService;
     private readonly IPromotionUsageService? _promotionUsageService;
+    private readonly ISettingsService? _settingsService;
+    private readonly IExportService? _exportService;
     private readonly Dictionary<int, Promotion> _promotionLookup = [];
+    private AppSettings? _loadedSettings;
     private CancellationTokenSource? _searchDebounceCts;
     private bool _suppressSearchTextChanged;
 
@@ -43,6 +46,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool isHistorySectionVisible;
 
     [ObservableProperty]
+    private bool isSettingsSectionVisible;
+
+    [ObservableProperty]
     private string searchText = string.Empty;
 
     [ObservableProperty]
@@ -53,6 +59,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string statusMessage = "Loading promotions...";
+
+    [ObservableProperty]
+    private string shopNameDisplay = "Shop name not set";
 
     [ObservableProperty]
     private string searchModeLabel = "Search by vehicle number, phone number, or owner name";
@@ -181,6 +190,24 @@ public partial class MainWindowViewModel : ViewModelBase
     private string historyRecordsStatusMessage = "Review and maintain promotion records here.";
 
     [ObservableProperty]
+    private string settingsShopName = string.Empty;
+
+    [ObservableProperty]
+    private string settingsExportFolder = string.Empty;
+
+    [ObservableProperty]
+    private string settingsStatusMessage = "Configure shop name, export folder, and delete password here.";
+
+    [ObservableProperty]
+    private string currentDeletePassword = string.Empty;
+
+    [ObservableProperty]
+    private string newDeletePassword = string.Empty;
+
+    [ObservableProperty]
+    private string confirmDeletePassword = string.Empty;
+
+    [ObservableProperty]
     private string historyRecordsEmptyTitle = "No records yet";
 
     [ObservableProperty]
@@ -230,6 +257,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool canDeleteSelectedHistoryRecord;
+
+    public string SettingsExportFolderHint => "Leave blank to use the default Documents/PlateGuard Exports folder.";
 
     public MainWindowViewModel()
     {
@@ -316,6 +345,10 @@ public partial class MainWindowViewModel : ViewModelBase
         HasNoHistoryRecords = false;
         HistoryRecordsSummary = "1 record available.";
         HistoryRecordsStatusMessage = "Select a record to edit or delete it.";
+        ShopNameDisplay = "Sample Service Center";
+        SettingsShopName = "Sample Service Center";
+        SettingsExportFolder = @"C:\Exports\PlateGuard";
+        SettingsStatusMessage = "Settings are ready.";
         UpdateSelectedVehicleSummary(SelectedVehicle);
         UpdateSelectedManagementPromotionSummary(SelectedPromotionManagementItem);
         UpdateSelectedHistoryRecordSummary(SelectedHistoryRecord);
@@ -324,11 +357,15 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(
         IVehicleService vehicleService,
         IPromotionService promotionService,
-        IPromotionUsageService promotionUsageService)
+        IPromotionUsageService promotionUsageService,
+        ISettingsService settingsService,
+        IExportService exportService)
     {
         _vehicleService = vehicleService;
         _promotionService = promotionService;
         _promotionUsageService = promotionUsageService;
+        _settingsService = settingsService;
+        _exportService = exportService;
 
         _ = InitializeAsync();
     }
@@ -401,6 +438,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsSearchSectionVisible = true;
         IsPromotionsSectionVisible = false;
         IsHistorySectionVisible = false;
+        IsSettingsSectionVisible = false;
     }
 
     [RelayCommand]
@@ -409,6 +447,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsSearchSectionVisible = false;
         IsPromotionsSectionVisible = true;
         IsHistorySectionVisible = false;
+        IsSettingsSectionVisible = false;
         await LoadPromotionManagementAsync();
     }
 
@@ -418,7 +457,18 @@ public partial class MainWindowViewModel : ViewModelBase
         IsSearchSectionVisible = false;
         IsPromotionsSectionVisible = false;
         IsHistorySectionVisible = true;
+        IsSettingsSectionVisible = false;
         await LoadHistoryRecordsAsync();
+    }
+
+    [RelayCommand]
+    private async Task ShowSettingsSectionAsync()
+    {
+        IsSearchSectionVisible = false;
+        IsPromotionsSectionVisible = false;
+        IsHistorySectionVisible = false;
+        IsSettingsSectionVisible = true;
+        await LoadSettingsAsync();
     }
 
     [RelayCommand]
@@ -434,6 +484,18 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task ExportFilteredHistoryRecordsAsync()
+    {
+        await ExportHistoryRecordsAsync(useCurrentFilters: true);
+    }
+
+    [RelayCommand]
+    private async Task ExportAllHistoryRecordsAsync()
+    {
+        await ExportHistoryRecordsAsync(useCurrentFilters: false);
+    }
+
+    [RelayCommand]
     private async Task ClearHistoryFiltersAsync()
     {
         HistorySearchText = string.Empty;
@@ -441,6 +503,78 @@ public partial class MainWindowViewModel : ViewModelBase
         HistoryDateToText = string.Empty;
         SelectedHistoryPromotionFilter = HistoryPromotionFilters.FirstOrDefault();
         await LoadHistoryRecordsAsync();
+    }
+
+    [RelayCommand]
+    private async Task SaveSettingsAsync()
+    {
+        if (_settingsService is null)
+        {
+            SettingsStatusMessage = "Settings are not available in design mode.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var result = await _settingsService.UpdateAsync(new UpdateAppSettingsRequest
+            {
+                ShopName = SettingsShopName,
+                ExportFolder = SettingsExportFolder
+            });
+
+            SettingsStatusMessage = result.Message;
+            if (result.IsSuccess && result.Settings is not null)
+            {
+                ApplyLoadedSettings(result.Settings);
+            }
+        }
+        catch (Exception exception)
+        {
+            SettingsStatusMessage = $"Could not save settings: {exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ChangeDeletePasswordAsync()
+    {
+        if (_settingsService is null)
+        {
+            SettingsStatusMessage = "Settings are not available in design mode.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var result = await _settingsService.ChangeDeletePasswordAsync(new ChangeDeletePasswordRequest
+            {
+                CurrentPassword = CurrentDeletePassword,
+                NewPassword = NewDeletePassword,
+                ConfirmNewPassword = ConfirmDeletePassword
+            });
+
+            SettingsStatusMessage = result.Message;
+            if (result.IsSuccess)
+            {
+                CurrentDeletePassword = string.Empty;
+                NewDeletePassword = string.Empty;
+                ConfirmDeletePassword = string.Empty;
+                ApplyLoadedSettings(await _settingsService.GetAsync());
+            }
+        }
+        catch (Exception exception)
+        {
+            SettingsStatusMessage = $"Could not change the delete password: {exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -564,7 +698,88 @@ public partial class MainWindowViewModel : ViewModelBase
         await LoadPromotionsAsync();
         await LoadPromotionManagementAsync();
         await LoadHistoryRecordsAsync();
+        await LoadSettingsAsync();
         ClearSearchState();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        if (_settingsService is null)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var settings = await _settingsService.GetAsync();
+            ApplyLoadedSettings(settings);
+            SettingsStatusMessage = "Settings loaded.";
+        }
+        catch (Exception exception)
+        {
+            SettingsStatusMessage = $"Could not load settings: {exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ExportHistoryRecordsAsync(bool useCurrentFilters)
+    {
+        if (_promotionUsageService is null || _exportService is null)
+        {
+            HistoryRecordsStatusMessage = "CSV export is not available in design mode.";
+            return;
+        }
+
+        PromotionUsageRecordQuery query;
+        if (useCurrentFilters)
+        {
+            var validationMessage = TryBuildHistoryQuery(out query);
+            if (validationMessage is not null)
+            {
+                HistoryRecordsStatusMessage = validationMessage;
+                return;
+            }
+        }
+        else
+        {
+            query = new PromotionUsageRecordQuery();
+        }
+
+        IsBusy = true;
+        try
+        {
+            var records = await _promotionUsageService.SearchUsageRecordsAsync(query);
+            var result = await _exportService.ExportPromotionUsageRecordsAsync(new ExportPromotionUsageRecordsRequest
+            {
+                Records = records,
+                ExportFolder = _loadedSettings?.ExportFolder,
+                FileNamePrefix = useCurrentFilters ? "plateguard-history-filtered" : "plateguard-history-all"
+            });
+
+            HistoryRecordsStatusMessage = result.Message;
+        }
+        catch (Exception exception)
+        {
+            HistoryRecordsStatusMessage = $"Could not export records: {exception.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void ApplyLoadedSettings(AppSettings settings)
+    {
+        _loadedSettings = settings;
+        SettingsShopName = settings.ShopName ?? string.Empty;
+        SettingsExportFolder = settings.ExportFolder ?? string.Empty;
+        ShopNameDisplay = string.IsNullOrWhiteSpace(settings.ShopName)
+            ? "Shop name not set"
+            : settings.ShopName.Trim();
     }
 
     private async Task LoadPromotionsAsync()

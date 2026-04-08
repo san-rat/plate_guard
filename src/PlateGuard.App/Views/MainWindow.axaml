@@ -44,6 +44,9 @@
                                    FontWeight="SemiBold"/>
                         <TextBlock Text="Vehicle promotion control"
                                    Foreground="#475569"/>
+                        <TextBlock Text="{Binding ShopNameDisplay}"
+                                   Foreground="#64748B"
+                                   TextWrapping="Wrap"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -71,22 +74,19 @@
                                    FontWeight="SemiBold"/>
                     </Button>
 
-                    <Border Background="#F8FAFC"
-                            BorderBrush="#E2E8F0"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Opacity="0.75"
-                            Padding="12,10">
+                    <Button Command="{Binding ShowSettingsSectionCommand}"
+                            HorizontalContentAlignment="Left"
+                            MinHeight="42">
                         <TextBlock Text="Settings"
-                                   Foreground="#64748B"/>
-                    </Border>
+                                   FontWeight="SemiBold"/>
+                    </Button>
                 </StackPanel>
 
                 <TextBlock Grid.Row="2"
                            Margin="20,0,20,20"
                            VerticalAlignment="Bottom"
                            Foreground="#64748B"
-                           Text="V1 shell: search, usage, and promotion control."/>
+                           Text="V1 shell: search, history, settings, export, and promotion control."/>
             </Grid>
         </Border>
 
@@ -615,7 +615,7 @@
                         BorderThickness="1"
                         CornerRadius="14"
                         Padding="20">
-                    <Grid ColumnDefinitions="*,Auto,Auto"
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto"
                           ColumnSpacing="12">
                         <StackPanel Spacing="6">
                             <TextBlock Text="History / Records"
@@ -627,11 +627,21 @@
                         </StackPanel>
 
                         <Button Grid.Column="1"
+                                MinWidth="150"
+                                Height="42"
+                                Command="{Binding ExportFilteredHistoryRecordsCommand}"
+                                Content="Export Filtered CSV"/>
+                        <Button Grid.Column="2"
+                                MinWidth="130"
+                                Height="42"
+                                Command="{Binding ExportAllHistoryRecordsCommand}"
+                                Content="Export All CSV"/>
+                        <Button Grid.Column="3"
                                 MinWidth="110"
                                 Height="42"
                                 Command="{Binding ClearHistoryFiltersCommand}"
                                 Content="Clear Filters"/>
-                        <Button Grid.Column="2"
+                        <Button Grid.Column="4"
                                 MinWidth="110"
                                 Height="42"
                                 Command="{Binding RefreshHistoryRecordsCommand}"
@@ -894,6 +904,122 @@
                         CornerRadius="14"
                         Padding="14,10">
                     <TextBlock Text="{Binding HistoryRecordsStatusMessage}"
+                               Foreground="#475569"
+                               TextWrapping="Wrap"/>
+                </Border>
+            </Grid>
+
+            <Grid IsVisible="{Binding IsSettingsSectionVisible}"
+                  RowDefinitions="Auto,*,Auto"
+                  RowSpacing="16">
+                <Border Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="20">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Settings"
+                                   FontSize="28"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="Keep settings small: shop name, export folder, and delete password."
+                                   Foreground="#475569"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="1"
+                      ColumnDefinitions="*,*"
+                      ColumnSpacing="16">
+                    <Border Background="White"
+                            BorderBrush="#E2E8F0"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="16">
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="General"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Update the shop name and the default folder used for CSV exports."
+                                           Foreground="#475569"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Shop Name"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding SettingsShopName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         PlaceholderText="Optional shop name"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Default Export Folder"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding SettingsExportFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         PlaceholderText="Optional full folder path"/>
+                                <TextBlock Text="{Binding SettingsExportFolderHint}"
+                                           Foreground="#64748B"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+
+                            <Button Width="150"
+                                    Height="42"
+                                    HorizontalAlignment="Left"
+                                    Command="{Binding SaveSettingsCommand}"
+                                    Content="Save Settings"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1"
+                            Background="White"
+                            BorderBrush="#E2E8F0"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="16">
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Delete Password"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="Change the password required before deleting a promotion usage record."
+                                           Foreground="#475569"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Current Password"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding CurrentDeletePassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="New Password"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding NewDeletePassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Confirm New Password"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding ConfirmDeletePassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <Button Width="170"
+                                    Height="42"
+                                    HorizontalAlignment="Left"
+                                    Command="{Binding ChangeDeletePasswordCommand}"
+                                    Content="Change Password"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="2"
+                        Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="14,10">
+                    <TextBlock Text="{Binding SettingsStatusMessage}"
                                Foreground="#475569"
                                TextWrapping="Wrap"/>
                 </Border>

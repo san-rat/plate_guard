@@ -30,10 +30,22 @@ IPromotionUsageService promotionUsageService = new PromotionUsageService(
     promotionRepository,
     promotionUsageRepository,
     settingsRepository);
+ISettingsService settingsService = new SettingsService(settingsRepository);
+IExportService exportService = new ExportService(settingsRepository);
 
 var settings = await settingsRepository.GetAsync() ?? throw new InvalidOperationException("Expected seeded settings row.");
 Assert(settings.Id == PlateGuardDatabaseInitializer.DefaultSettingsId, "Default settings row was not seeded.");
 Assert(settings.DeletePasswordHash is { Length: 64 }, "Seeded delete password hash is invalid.");
+
+var exportFolder = Path.Combine(smokeDbDirectory, "exports");
+var settingsUpdateResult = await settingsService.UpdateAsync(new UpdateAppSettingsRequest
+{
+    ShopName = "PlateGuard Smoke Shop",
+    ExportFolder = exportFolder
+});
+Assert(settingsUpdateResult.IsSuccess, "Updating settings failed.");
+Assert(settingsUpdateResult.Settings?.ShopName == "PlateGuard Smoke Shop", "Shop name did not persist correctly.");
+Assert(settingsUpdateResult.Settings?.ExportFolder == exportFolder, "Export folder did not persist correctly.");
 
 var promotion = await promotionService.CreateAsync(new Promotion
 {
@@ -99,24 +111,49 @@ Assert(usageCount == 1, "Usage count by promotion failed.");
 var activePromotions = await promotionService.GetActiveAsync();
 Assert(activePromotions.Any(item => item.Id == promotion.Id), "Active promotion lookup failed.");
 
-var deleteWrongPassword = await promotionUsageService.DeleteUsageAsync(usage.Id, "wrong-password");
-Assert(!deleteWrongPassword.IsSuccess, "Delete should fail with an incorrect password.");
+var exportRecords = await promotionUsageService.SearchUsageRecordsAsync(new PromotionUsageRecordQuery());
+var exportResult = await exportService.ExportPromotionUsageRecordsAsync(new ExportPromotionUsageRecordsRequest
+{
+    Records = exportRecords,
+    ExportFolder = exportFolder,
+    FileNamePrefix = "smoke-history"
+});
+Assert(exportResult.IsSuccess, "CSV export failed.");
+Assert(exportResult.ExportedRecordCount == 1, "CSV export did not include the expected record count.");
+Assert(exportResult.FilePath is not null && File.Exists(exportResult.FilePath), "CSV export file was not created.");
+var exportContent = await File.ReadAllTextAsync(exportResult.FilePath!);
+Assert(exportContent.Contains("Service Date", StringComparison.Ordinal), "CSV header row is missing.");
+Assert(exportContent.Contains("New Year Promo", StringComparison.Ordinal), "CSV export content is missing the saved promotion.");
 
-var deleteCorrectPassword = await promotionUsageService.DeleteUsageAsync(usage.Id, "admin");
-Assert(deleteCorrectPassword.IsSuccess, "Delete should succeed with the correct password.");
+var passwordChangeResult = await settingsService.ChangeDeletePasswordAsync(new ChangeDeletePasswordRequest
+{
+    CurrentPassword = "admin",
+    NewPassword = "smoke-secret",
+    ConfirmNewPassword = "smoke-secret"
+});
+Assert(passwordChangeResult.IsSuccess, "Changing the delete password failed.");
+
+var deleteOldPassword = await promotionUsageService.DeleteUsageAsync(usage.Id, "admin");
+Assert(!deleteOldPassword.IsSuccess, "Delete should fail with the previous password after a password change.");
+
+var deleteCorrectPassword = await promotionUsageService.DeleteUsageAsync(usage.Id, "smoke-secret");
+Assert(deleteCorrectPassword.IsSuccess, "Delete should succeed with the updated password.");
 
 var eligibilityAfterDelete = await promotionUsageService.CheckEligibilityAsync(vehicle.Id, promotion.Id);
 Assert(eligibilityAfterDelete.IsEligible, "Vehicle should become eligible again after usage deletion.");
 
 Console.WriteLine($"Smoke DB: {smokeDbPath}");
 Console.WriteLine($"Settings seeded: {settings.Id}");
+Console.WriteLine($"Settings updated: {settingsUpdateResult.Settings?.ShopName} -> {settingsUpdateResult.Settings?.ExportFolder}");
 Console.WriteLine($"Vehicle created: {vehicle.VehicleNumberNormalized} ({vehicle.OwnerName})");
 Console.WriteLine($"Promotion created: {promotion.PromotionName}");
 Console.WriteLine($"Usage created: VehicleId={usage.VehicleId}, PromotionId={usage.PromotionId}");
 Console.WriteLine($"Duplicate blocked: {!duplicateResult.IsSuccess}");
 Console.WriteLine($"Phone search results: {byPhone.Count}");
 Console.WriteLine($"Owner search results: {byOwner.Count}");
-Console.WriteLine($"Delete wrong password blocked: {!deleteWrongPassword.IsSuccess}");
+Console.WriteLine($"Export created: {exportResult.FilePath}");
+Console.WriteLine($"Password changed: {passwordChangeResult.IsSuccess}");
+Console.WriteLine($"Delete old password blocked: {!deleteOldPassword.IsSuccess}");
 Console.WriteLine($"Delete correct password succeeded: {deleteCorrectPassword.IsSuccess}");
 Console.WriteLine("Smoke tests passed.");
 
