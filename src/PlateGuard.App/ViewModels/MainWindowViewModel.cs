@@ -124,6 +124,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool canAddUsage;
 
     [ObservableProperty]
+    private bool isEligibilityPositive;
+
+    [ObservableProperty]
+    private bool isEligibilityWarning;
+
+    [ObservableProperty]
     private bool isBusy;
 
     [ObservableProperty]
@@ -289,9 +295,11 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedPromotionName = "Sample Promotion";
         SelectedPromotionDetails = "Active now";
         HistorySummary = "1 promotion usage record for this vehicle.";
-        EligibilityTitle = "Vehicle is eligible for this promotion";
-        EligibilityMessage = "No previous usage found for this promotion.";
-        CanAddUsage = true;
+        SetEligibilityState(
+            "Vehicle is eligible for this promotion",
+            "No previous usage found for this promotion.",
+            canAddUsage: true,
+            EligibilityDisplayTone.Positive);
         PromotionManagementItems.Add(new PromotionManagementItemViewModel(
             new Promotion
             {
@@ -974,18 +982,22 @@ public partial class MainWindowViewModel : ViewModelBase
 
             if (SelectedPromotion is null)
             {
-                EligibilityTitle = "Select a promotion";
-                EligibilityMessage = "Choose an active promotion to check eligibility.";
-                CanAddUsage = false;
+                SetEligibilityState(
+                    "Select a promotion",
+                    "Choose an active promotion to check eligibility.",
+                    canAddUsage: false,
+                    EligibilityDisplayTone.Neutral);
                 return;
             }
 
             var eligibility = await _promotionUsageService.CheckEligibilityAsync(SelectedVehicle.Id, SelectedPromotion.Id);
-            EligibilityTitle = eligibility.IsEligible
-                ? "Vehicle is eligible for this promotion"
-                : "Promotion already used or unavailable";
-            EligibilityMessage = eligibility.Message;
-            CanAddUsage = eligibility.IsEligible;
+            SetEligibilityState(
+                eligibility.IsEligible
+                    ? "Vehicle is eligible for this promotion"
+                    : "Promotion already used or unavailable",
+                eligibility.Message,
+                eligibility.IsEligible,
+                eligibility.IsEligible ? EligibilityDisplayTone.Positive : EligibilityDisplayTone.Warning);
         }
         catch (Exception exception)
         {
@@ -994,9 +1006,11 @@ public partial class MainWindowViewModel : ViewModelBase
             HasNoHistory = true;
             HistorySummary = "Promotion history is unavailable right now.";
             HistoryEmptyStateMessage = "The history request failed.";
-            EligibilityTitle = "Eligibility check unavailable";
-            EligibilityMessage = "Review the database state and try again.";
-            CanAddUsage = false;
+            SetEligibilityState(
+                "Eligibility check unavailable",
+                "Review the database state and try again.",
+                canAddUsage: false,
+                EligibilityDisplayTone.Warning);
             StatusMessage = $"Could not refresh selection details: {exception.Message}";
         }
     }
@@ -1373,40 +1387,59 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (SelectedPromotion is null)
         {
-            EligibilityTitle = "Select a promotion";
-            EligibilityMessage = "Choose an active promotion before adding or checking usage.";
-            CanAddUsage = false;
+            SetEligibilityState(
+                "Select a promotion",
+                "Choose an active promotion before adding or checking usage.",
+                canAddUsage: false,
+                EligibilityDisplayTone.Neutral);
             return;
         }
 
         if (!SelectedPromotion.IsActive)
         {
-            EligibilityTitle = "Selected promotion is inactive";
-            EligibilityMessage = "Activate the promotion before recording a new usage.";
-            CanAddUsage = false;
+            SetEligibilityState(
+                "Selected promotion is inactive",
+                "Activate the promotion before recording a new usage.",
+                canAddUsage: false,
+                EligibilityDisplayTone.Warning);
             return;
         }
 
         if (string.IsNullOrWhiteSpace(SearchText))
         {
-            EligibilityTitle = "Select a vehicle and promotion";
-            EligibilityMessage = "Search for a vehicle and choose an active promotion to check eligibility.";
-            CanAddUsage = false;
+            SetEligibilityState(
+                "Select a vehicle and promotion",
+                "Search for a vehicle and choose an active promotion to check eligibility.",
+                canAddUsage: false,
+                EligibilityDisplayTone.Neutral);
             return;
         }
 
         var searchMode = DetectSearchMode(SearchText);
         if (searchMode != SearchMode.VehicleNumber)
         {
-            EligibilityTitle = "Search by vehicle number to add a new vehicle";
-            EligibilityMessage = "Phone and owner searches are for finding existing vehicles. Use a vehicle number search to create a new vehicle usage record.";
-            CanAddUsage = false;
+            SetEligibilityState(
+                "Search by vehicle number to add a new vehicle",
+                "Phone and owner searches are for finding existing vehicles. Use a vehicle number search to create a new vehicle usage record.",
+                canAddUsage: false,
+                EligibilityDisplayTone.Neutral);
             return;
         }
 
-        EligibilityTitle = "New vehicle can be added for this promotion";
-        EligibilityMessage = "No existing vehicle matched this vehicle number. Use Add Usage to create the vehicle record and save the promotion usage.";
-        CanAddUsage = true;
+        SetEligibilityState(
+            "New vehicle can be added for this promotion",
+            "No existing vehicle matched this vehicle number. Use Add Usage to create the vehicle record and save the promotion usage.",
+            canAddUsage: true,
+            EligibilityDisplayTone.Positive);
+    }
+
+    private void SetEligibilityState(string title, string message, bool canAddUsage, EligibilityDisplayTone tone)
+    {
+        EligibilityTitle = title;
+        EligibilityMessage = message;
+        CanAddUsage = canAddUsage;
+        IsEligibilityPositive = tone == EligibilityDisplayTone.Positive;
+        IsEligibilityWarning = tone == EligibilityDisplayTone.Warning;
     }
 
     private static string FormatVehicleNumber(Vehicle vehicle)
@@ -1477,5 +1510,12 @@ public partial class MainWindowViewModel : ViewModelBase
         VehicleNumber,
         PhoneNumber,
         OwnerName
+    }
+
+    private enum EligibilityDisplayTone
+    {
+        Neutral,
+        Positive,
+        Warning
     }
 }

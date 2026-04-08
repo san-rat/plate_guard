@@ -73,6 +73,8 @@ foreach ($item in $publishedItems) {
 
 Copy-Item (Join-Path $PSScriptRoot "DELIVERY-README.md") (Join-Path $DeliveryDir "README.md") -Force
 Copy-Item (Join-Path $PSScriptRoot "ADMIN-NOTES.md") (Join-Path $DeliveryDir "ADMIN-NOTES.md") -Force
+Copy-Item (Join-Path $PSScriptRoot "USER-GUIDE.md") (Join-Path $DeliveryDir "USER-GUIDE.md") -Force
+Copy-Item (Join-Path $PSScriptRoot "FIRST-LIVE-SETUP-CHECKLIST.md") (Join-Path $DeliveryDir "FIRST-LIVE-SETUP-CHECKLIST.md") -Force
 Copy-Item (Join-Path $PSScriptRoot "Create-Desktop-Shortcut.ps1") (Join-Path $DeliveryDir "Create-Desktop-Shortcut.ps1") -Force
 
 Write-Host ""
@@ -80,3 +82,5 @@ Write-Host "Publish complete." -ForegroundColor Green
 Write-Host "Portable app: $DeliveryAppDir"
 Write-Host "README:       $(Join-Path $DeliveryDir 'README.md')"
 Write-Host "Admin notes:  $(Join-Path $DeliveryDir 'ADMIN-NOTES.md')"
+Write-Host "User guide:   $(Join-Path $DeliveryDir 'USER-GUIDE.md')"
+Write-Host "Checklist:    $(Join-Path $DeliveryDir 'FIRST-LIVE-SETUP-CHECKLIST.md')"

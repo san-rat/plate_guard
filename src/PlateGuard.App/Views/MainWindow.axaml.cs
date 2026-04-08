@@ -23,6 +23,12 @@ public partial class MainWindow : Window
         _promotionUsageService = promotionUsageService;
     }
 
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        SearchInputTextBox?.Focus();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         if (_viewModel is not null)
