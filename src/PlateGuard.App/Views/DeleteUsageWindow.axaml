@@ -6,13 +6,13 @@
         mc:Ignorable="d"
         x:Class="PlateGuard.App.Views.DeleteUsageWindow"
         x:DataType="vm:DeleteUsageDialogViewModel"
-        d:DesignWidth="620"
-        d:DesignHeight="380"
+        d:DesignWidth="600"
+        d:DesignHeight="360"
         Title="Delete Record"
-        Width="620"
-        Height="380"
-        MinWidth="580"
-        MinHeight="340"
+        Width="600"
+        Height="360"
+        MinWidth="560"
+        MinHeight="320"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
 
@@ -20,84 +20,76 @@
         <vm:DeleteUsageDialogViewModel/>
     </Design.DataContext>
 
-    <Grid RowDefinitions="*,Auto"
-          Background="#F1F5F9">
-        <StackPanel Margin="20"
-                    Spacing="16">
-            <Border Background="White"
-                    BorderBrush="#E2E8F0"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="18">
-                <StackPanel Spacing="8">
+    <Grid RowDefinitions="*,Auto">
+        <StackPanel Margin="24"
+                    Spacing="18">
+            <Border Classes="statusBanner negative"
+                    Padding="16">
+                <StackPanel Spacing="6">
                     <TextBlock Text="Delete Record"
-                               FontSize="26"
-                               FontWeight="SemiBold"/>
+                               Classes="pageTitle"/>
                     <TextBlock Text="{Binding WarningMessage}"
-                               Foreground="#475569"
-                               TextWrapping="Wrap"/>
+                               Classes="muted"/>
                 </StackPanel>
             </Border>
 
-            <Border Background="White"
-                    BorderBrush="#E2E8F0"
-                    BorderThickness="1"
-                    CornerRadius="14"
+            <Border Classes="surfaceCard"
                     Padding="18">
                 <Grid ColumnDefinitions="*,*"
+                      RowDefinitions="Auto,Auto"
                       ColumnSpacing="16"
-                      RowDefinitions="Auto,Auto">
-                    <StackPanel Spacing="6">
+                      RowSpacing="16">
+                    <StackPanel Spacing="4">
                         <TextBlock Text="Vehicle Number"
-                                   FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding VehicleNumberDisplay}"/>
+                                   Classes="label"/>
+                        <TextBlock Text="{Binding VehicleNumberDisplay}"
+                                   Classes="value"/>
                     </StackPanel>
+
                     <StackPanel Grid.Column="1"
-                                Spacing="6">
+                                Spacing="4">
                         <TextBlock Text="Promotion"
-                                   FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding PromotionName}"/>
+                                   Classes="label"/>
+                        <TextBlock Text="{Binding PromotionName}"
+                                   Classes="value"/>
                     </StackPanel>
+
                     <StackPanel Grid.Row="1"
                                 Grid.ColumnSpan="2"
-                                Margin="0,14,0,0"
                                 Spacing="6">
                         <TextBlock Text="Delete Password"
-                                   FontWeight="SemiBold"/>
-                        <TextBox Text="{Binding DeletePassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                   Classes="label"/>
+                        <TextBox Text="{Binding DeletePassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 PasswordChar="*"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <Border Background="White"
-                    BorderBrush="#E2E8F0"
-                    BorderThickness="1"
-                    CornerRadius="14"
+            <Border Classes="softCard"
                     Padding="14,12">
                 <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="#475569"
-                           TextWrapping="Wrap"/>
+                           Classes="muted"/>
             </Border>
         </StackPanel>
 
         <Border Grid.Row="1"
-                Background="White"
-                BorderBrush="#E2E8F0"
+                Background="{StaticResource BrushSurface}"
+                BorderBrush="{StaticResource BrushBorder}"
                 BorderThickness="1,1,0,0"
-                Padding="20,14">
+                Padding="24,14">
             <Grid ColumnDefinitions="*,Auto,Auto"
                   ColumnSpacing="12">
-                <TextBlock Text="Deleting this record restores eligibility for the same promotion."
+                <TextBlock Text="Deleting restores eligibility for the same promotion."
                            VerticalAlignment="Center"
-                           Foreground="#475569"/>
+                           Classes="subtle"/>
                 <Button Grid.Column="1"
+                        Classes="secondary"
                         MinWidth="110"
-                        Height="40"
                         Command="{Binding CancelCommand}"
                         Content="Cancel"/>
                 <Button Grid.Column="2"
+                        Classes="danger"
                         MinWidth="110"
-                        Height="40"
                         Command="{Binding DeleteCommand}"
                         Content="Delete"/>
             </Grid>

@@ -127,6 +127,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool isEligibilityPositive;
 
     [ObservableProperty]
+    private bool isEligibilityNegative;
+
+    [ObservableProperty]
     private bool isEligibilityWarning;
 
     [ObservableProperty]
@@ -139,7 +142,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string promotionManagementSummary = "Promotions will appear here.";
 
     [ObservableProperty]
-    private string promotionManagementStatusMessage = "Promotion management is ready.";
+    private string promotionManagementStatusMessage = "Manage promotion status and usage counts.";
 
     [ObservableProperty]
     private string promotionManagementEmptyTitle = "No promotions yet";
@@ -193,7 +196,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string historyRecordsSummary = "Records will appear here.";
 
     [ObservableProperty]
-    private string historyRecordsStatusMessage = "Review and maintain promotion records here.";
+    private string historyRecordsStatusMessage = "Review, edit, delete, and export records.";
 
     [ObservableProperty]
     private string settingsShopName = string.Empty;
@@ -202,7 +205,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string settingsExportFolder = string.Empty;
 
     [ObservableProperty]
-    private string settingsStatusMessage = "Configure shop name, export folder, and delete password here.";
+    private string settingsStatusMessage = "Update the shop name, export folder, and delete password.";
 
     [ObservableProperty]
     private string currentDeletePassword = string.Empty;
@@ -994,10 +997,10 @@ public partial class MainWindowViewModel : ViewModelBase
             SetEligibilityState(
                 eligibility.IsEligible
                     ? "Vehicle is eligible for this promotion"
-                    : "Promotion already used or unavailable",
+                    : "Promotion already used for this vehicle",
                 eligibility.Message,
                 eligibility.IsEligible,
-                eligibility.IsEligible ? EligibilityDisplayTone.Positive : EligibilityDisplayTone.Warning);
+                eligibility.IsEligible ? EligibilityDisplayTone.Positive : EligibilityDisplayTone.Negative);
         }
         catch (Exception exception)
         {
@@ -1439,6 +1442,7 @@ public partial class MainWindowViewModel : ViewModelBase
         EligibilityMessage = message;
         CanAddUsage = canAddUsage;
         IsEligibilityPositive = tone == EligibilityDisplayTone.Positive;
+        IsEligibilityNegative = tone == EligibilityDisplayTone.Negative;
         IsEligibilityWarning = tone == EligibilityDisplayTone.Warning;
     }
 
@@ -1516,6 +1520,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         Neutral,
         Positive,
+        Negative,
         Warning
     }
 }

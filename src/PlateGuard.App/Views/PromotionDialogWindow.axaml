@@ -7,12 +7,12 @@
         x:Class="PlateGuard.App.Views.PromotionDialogWindow"
         x:DataType="vm:PromotionDialogViewModel"
         d:DesignWidth="720"
-        d:DesignHeight="540"
+        d:DesignHeight="520"
         Title="Promotion"
         Width="720"
-        Height="540"
-        MinWidth="680"
-        MinHeight="500"
+        Height="520"
+        MinWidth="660"
+        MinHeight="480"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
 
@@ -20,36 +20,24 @@
         <vm:PromotionDialogViewModel/>
     </Design.DataContext>
 
-    <Grid RowDefinitions="*,Auto"
-          Background="#F1F5F9">
-        <ScrollViewer Margin="20">
-            <StackPanel Spacing="16">
-                <Border Background="White"
-                        BorderBrush="#E2E8F0"
-                        BorderThickness="1"
-                        CornerRadius="14"
-                        Padding="18">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="{Binding DialogTitle}"
-                                   FontSize="26"
-                                   FontWeight="SemiBold"/>
-                        <TextBlock Text="Create or update a promotion, date window, and active status."
-                                   Foreground="#475569"
-                                   TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+    <Grid RowDefinitions="*,Auto">
+        <ScrollViewer Margin="24,24,24,12">
+            <StackPanel Spacing="20">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding DialogTitle}"
+                               Classes="pageTitle"/>
+                    <TextBlock Text="Promotion name is required. Dates are optional."
+                               Classes="muted"/>
+                </StackPanel>
 
-                <Border Background="White"
-                        BorderBrush="#E2E8F0"
-                        BorderThickness="1"
-                        CornerRadius="14"
+                <Border Classes="surfaceCard"
                         Padding="18">
                     <Grid ColumnDefinitions="*,*"
                           ColumnSpacing="16"
                           RowDefinitions="Auto,Auto,Auto,Auto">
                         <StackPanel Spacing="6">
                             <TextBlock Text="Promotion Name *"
-                                       FontWeight="SemiBold"/>
+                                       Classes="label"/>
                             <TextBox Text="{Binding PromotionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
 
@@ -58,7 +46,7 @@
                                     Margin="0,14,0,0"
                                     Spacing="6">
                             <TextBlock Text="Description"
-                                       FontWeight="SemiBold"/>
+                                       Classes="label"/>
                             <TextBox Text="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      AcceptsReturn="True"
                                      Height="110"
@@ -70,7 +58,7 @@
                                     Margin="0,14,0,0"
                                     Spacing="6">
                             <TextBlock Text="Start Date"
-                                       FontWeight="SemiBold"/>
+                                       Classes="label"/>
                             <TextBox Text="{Binding StartDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="yyyy-MM-dd"/>
                         </StackPanel>
@@ -80,7 +68,7 @@
                                     Margin="0,14,0,0"
                                     Spacing="6">
                             <TextBlock Text="End Date"
-                                       FontWeight="SemiBold"/>
+                                       Classes="label"/>
                             <TextBox Text="{Binding EndDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="yyyy-MM-dd"/>
                         </StackPanel>
@@ -89,43 +77,39 @@
                                     Margin="0,14,0,0"
                                     Spacing="6">
                             <TextBlock Text="Status"
-                                       FontWeight="SemiBold"/>
+                                       Classes="label"/>
                             <CheckBox IsChecked="{Binding IsActive, Mode=TwoWay}"
                                       Content="Active promotion"/>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <Border Background="White"
-                        BorderBrush="#E2E8F0"
-                        BorderThickness="1"
-                        CornerRadius="14"
+                <Border Classes="softCard"
                         Padding="14,12">
                     <TextBlock Text="{Binding StatusMessage}"
-                               Foreground="#475569"
-                               TextWrapping="Wrap"/>
+                               Classes="muted"/>
                 </Border>
             </StackPanel>
         </ScrollViewer>
 
         <Border Grid.Row="1"
-                Background="White"
-                BorderBrush="#E2E8F0"
+                Background="{StaticResource BrushSurface}"
+                BorderBrush="{StaticResource BrushBorder}"
                 BorderThickness="1,1,0,0"
-                Padding="20,14">
+                Padding="24,14">
             <Grid ColumnDefinitions="*,Auto,Auto"
                   ColumnSpacing="12">
-                <TextBlock Text="Required field: promotion name."
+                <TextBlock Text="Required: promotion name."
                            VerticalAlignment="Center"
-                           Foreground="#475569"/>
+                           Classes="subtle"/>
                 <Button Grid.Column="1"
+                        Classes="secondary"
                         MinWidth="110"
-                        Height="40"
                         Command="{Binding CancelCommand}"
                         Content="Cancel"/>
                 <Button Grid.Column="2"
+                        Classes="primary"
                         MinWidth="130"
-                        Height="40"
                         Command="{Binding SaveCommand}"
                         Content="{Binding SaveButtonText}"/>
             </Grid>
