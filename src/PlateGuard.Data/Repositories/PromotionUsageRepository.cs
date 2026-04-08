@@ -30,6 +30,14 @@ public sealed class PromotionUsageRepository() : RepositoryBase(new PlateGuardDb
         return entities.Select(PromotionUsageMapper.ToModel).ToList();
     }
 
+    public async Task<int> CountByPromotionIdAsync(int promotionId, CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = CreateDbContext();
+        return await dbContext.PromotionUsages
+            .AsNoTracking()
+            .CountAsync(usage => usage.PromotionId == promotionId, cancellationToken);
+    }
+
     public async Task<bool> ExistsAsync(int vehicleId, int promotionId, CancellationToken cancellationToken = default)
     {
         await using var dbContext = CreateDbContext();
