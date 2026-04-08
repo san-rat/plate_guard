@@ -1,0 +1,216 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PlateGuard.App.ViewModels"
+        xmlns:core="using:PlateGuard.Core.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="PlateGuard.App.Views.AddUsageWindow"
+        x:DataType="vm:AddUsageDialogViewModel"
+        d:DesignWidth="860"
+        d:DesignHeight="720"
+        Title="Add Usage"
+        Width="860"
+        Height="720"
+        MinWidth="780"
+        MinHeight="640"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Design.DataContext>
+        <vm:AddUsageDialogViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="*,Auto"
+          Background="#F1F5F9">
+        <ScrollViewer Margin="20">
+            <StackPanel Spacing="16">
+                <Border Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="18">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Add Usage"
+                                   FontSize="26"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding EntryModeTitle}"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding EntryModeMessage}"
+                                   Foreground="#475569"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="18">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="Core details"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"/>
+
+                        <Grid ColumnDefinitions="*,*"
+                              ColumnSpacing="16"
+                              RowDefinitions="Auto,Auto,Auto,Auto">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Vehicle Number *"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding VehicleNumberRaw, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsExistingVehicle}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1"
+                                        Spacing="6">
+                                <TextBlock Text="Normalized Preview"
+                                           FontWeight="SemiBold"/>
+                                <Border Background="#F8FAFC"
+                                        BorderBrush="#E2E8F0"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="12,10">
+                                    <TextBlock Text="{Binding NormalizedVehicleNumber}"/>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1"
+                                        Spacing="6">
+                                <TextBlock Text="Promotion *"
+                                           FontWeight="SemiBold"/>
+                                <ComboBox ItemsSource="{Binding AvailablePromotions}"
+                                          SelectedItem="{Binding SelectedPromotion, Mode=TwoWay}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="core:Promotion">
+                                            <TextBlock Text="{Binding PromotionName}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1"
+                                        Grid.Column="1"
+                                        Spacing="6">
+                                <TextBlock Text="Phone Number *"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding PhoneNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2"
+                                        Spacing="6">
+                                <TextBlock Text="Owner Name"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding OwnerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2"
+                                        Grid.Column="1"
+                                        Spacing="6">
+                                <TextBlock Text="Brand"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding Brand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="3"
+                                        Spacing="6">
+                                <TextBlock Text="Model"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding Model, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="White"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="18">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="Additional details"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"/>
+
+                        <Grid ColumnDefinitions="*,*,*"
+                              ColumnSpacing="16"
+                              RowDefinitions="Auto,Auto,Auto">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Mileage"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding MileageText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1"
+                                        Spacing="6">
+                                <TextBlock Text="Normal Price"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding NormalPriceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2"
+                                        Spacing="6">
+                                <TextBlock Text="Discounted Price"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding DiscountedPriceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1"
+                                        Spacing="6">
+                                <TextBlock Text="Amount Paid"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding AmountPaidText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2"
+                                        Grid.ColumnSpan="3"
+                                        Spacing="6">
+                                <TextBlock Text="Notes"
+                                           FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         AcceptsReturn="True"
+                                         Height="110"
+                                         TextWrapping="Wrap"
+                                         VerticalContentAlignment="Top"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#FFFFFF"
+                        BorderBrush="#E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Padding="14,12">
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="#475569"
+                               TextWrapping="Wrap"/>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="1"
+                Background="White"
+                BorderBrush="#E2E8F0"
+                BorderThickness="1,1,0,0"
+                Padding="20,14">
+            <Grid ColumnDefinitions="*,Auto,Auto"
+                  ColumnSpacing="12">
+                <TextBlock Text="Required fields: vehicle number, promotion, and phone number."
+                           VerticalAlignment="Center"
+                           Foreground="#475569"/>
+                <Button Grid.Column="1"
+                        MinWidth="110"
+                        Height="40"
+                        Command="{Binding CancelCommand}"
+                        Content="Cancel"/>
+                <Button Grid.Column="2"
+                        MinWidth="110"
+                        Height="40"
+                        Command="{Binding SaveCommand}"
+                        Content="Save"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

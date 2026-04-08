@@ -18,6 +18,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IPromotionUsageService? _promotionUsageService;
     private readonly Dictionary<int, Promotion> _promotionLookup = [];
     private CancellationTokenSource? _searchDebounceCts;
+    private bool _suppressSearchTextChanged;
+
+    public event Action<AddUsageDialogRequest>? AddUsageRequested;
 
     public ObservableCollection<Promotion> ActivePromotions { get; } = [];
     public ObservableCollection<Vehicle> SearchResults { get; } = [];
@@ -147,6 +150,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string value)
     {
+        if (_suppressSearchTextChanged)
+        {
+            return;
+        }
+
         if (_vehicleService is null)
         {
             return;
@@ -198,42 +206,30 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task AddUsageAsync()
+    private void AddUsage()
     {
-        if (!CanAddUsage || _promotionUsageService is null || SelectedVehicle is null || SelectedPromotion is null)
+        if (!CanAddUsage || SelectedPromotion is null)
         {
             return;
         }
 
-        IsBusy = true;
-        try
+        var prefilledVehicleNumber = string.Empty;
+        if (SelectedVehicle is not null)
         {
-            var result = await _promotionUsageService.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
-            {
-                VehicleNumberRaw = SelectedVehicle.VehicleNumberRaw,
-                PhoneNumber = SelectedVehicle.PhoneNumber,
-                OwnerName = SelectedVehicle.OwnerName,
-                Brand = SelectedVehicle.Brand,
-                Model = SelectedVehicle.Model,
-                PromotionId = SelectedPromotion.Id,
-                ServiceDate = DateTime.UtcNow
-            });
+            prefilledVehicleNumber = SelectedVehicle.VehicleNumberRaw;
+        }
+        else if (!string.IsNullOrWhiteSpace(SearchText) && DetectSearchMode(SearchText) == SearchMode.VehicleNumber)
+        {
+            prefilledVehicleNumber = SearchText.Trim();
+        }
 
-            StatusMessage = result.Message;
-
-            if (result.IsSuccess)
-            {
-                await RefreshSelectionStateAsync();
-            }
-        }
-        catch (Exception exception)
+        AddUsageRequested?.Invoke(new AddUsageDialogRequest
         {
-            StatusMessage = $"Could not save promotion usage: {exception.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+            Vehicle = SelectedVehicle,
+            SelectedPromotion = SelectedPromotion,
+            AvailablePromotions = ActivePromotions.ToList(),
+            PrefilledVehicleNumber = prefilledVehicleNumber
+        });
     }
 
     private async Task InitializeAsync()
@@ -409,9 +405,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 HistoryEmptyStateMessage = "No vehicle selected.";
                 HasHistory = false;
                 HasNoHistory = true;
-                EligibilityTitle = "Select a vehicle";
-                EligibilityMessage = "Choose a search result to view promotion eligibility and history.";
-                CanAddUsage = false;
+                ApplyNoVehicleEligibilityState();
                 return;
             }
 
@@ -462,6 +456,40 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    public async Task RefreshAfterUsageSavedAsync(SavePromotionUsageResult result)
+    {
+        StatusMessage = result.Message;
+
+        if (result.PromotionUsage is not null)
+        {
+            var matchingPromotion = ActivePromotions.FirstOrDefault(promotion => promotion.Id == result.PromotionUsage.PromotionId);
+            if (matchingPromotion is not null)
+            {
+                SelectedPromotion = matchingPromotion;
+            }
+        }
+
+        if (result.Vehicle is null)
+        {
+            await RefreshSelectionStateAsync();
+            return;
+        }
+
+        var query = result.Vehicle.VehicleNumberRaw;
+
+        _searchDebounceCts?.Cancel();
+        _suppressSearchTextChanged = true;
+        SearchText = query;
+        _suppressSearchTextChanged = false;
+
+        await ExecuteSearchAsync(query, CancellationToken.None);
+
+        SelectedVehicle = SearchResults.FirstOrDefault(vehicle => vehicle.Id == result.Vehicle.Id)
+            ?? SearchResults.FirstOrDefault();
+
+        StatusMessage = result.Message;
+    }
+
     private void ClearSearchState()
     {
         SearchResults.Clear();
@@ -480,10 +508,8 @@ public partial class MainWindowViewModel : ViewModelBase
             : "Search for a vehicle to check promotion eligibility.";
         HistorySummary = "Select a vehicle to view promotion history.";
         HistoryEmptyStateMessage = "No vehicle selected.";
-        EligibilityTitle = "Select a vehicle and promotion";
-        EligibilityMessage = "Search for a vehicle and choose an active promotion to check eligibility.";
-        CanAddUsage = false;
         UpdateSelectedVehicleSummary(null);
+        ApplyNoVehicleEligibilityState();
     }
 
     private void UpdateSelectedVehicleSummary(Vehicle? vehicle)
@@ -532,6 +558,46 @@ public partial class MainWindowViewModel : ViewModelBase
 
         detailParts.Add(promotion.IsActive ? "Active now" : "Inactive");
         SelectedPromotionDetails = string.Join(" | ", detailParts);
+    }
+
+    private void ApplyNoVehicleEligibilityState()
+    {
+        if (SelectedPromotion is null)
+        {
+            EligibilityTitle = "Select a promotion";
+            EligibilityMessage = "Choose an active promotion before adding or checking usage.";
+            CanAddUsage = false;
+            return;
+        }
+
+        if (!SelectedPromotion.IsActive)
+        {
+            EligibilityTitle = "Selected promotion is inactive";
+            EligibilityMessage = "Activate the promotion before recording a new usage.";
+            CanAddUsage = false;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            EligibilityTitle = "Select a vehicle and promotion";
+            EligibilityMessage = "Search for a vehicle and choose an active promotion to check eligibility.";
+            CanAddUsage = false;
+            return;
+        }
+
+        var searchMode = DetectSearchMode(SearchText);
+        if (searchMode != SearchMode.VehicleNumber)
+        {
+            EligibilityTitle = "Search by vehicle number to add a new vehicle";
+            EligibilityMessage = "Phone and owner searches are for finding existing vehicles. Use a vehicle number search to create a new vehicle usage record.";
+            CanAddUsage = false;
+            return;
+        }
+
+        EligibilityTitle = "New vehicle can be added for this promotion";
+        EligibilityMessage = "No existing vehicle matched this vehicle number. Use Add Usage to create the vehicle record and save the promotion usage.";
+        CanAddUsage = true;
     }
 
     private static string FormatVehicleNumber(Vehicle vehicle)

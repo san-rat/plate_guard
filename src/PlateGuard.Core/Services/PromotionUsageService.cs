@@ -269,6 +269,26 @@ public sealed class PromotionUsageService(
             return "Phone number is required.";
         }
 
+        if (request.Mileage < 0)
+        {
+            return "Mileage cannot be negative.";
+        }
+
+        if (request.NormalPrice < 0)
+        {
+            return "Normal price cannot be negative.";
+        }
+
+        if (request.DiscountedPrice < 0)
+        {
+            return "Discounted price cannot be negative.";
+        }
+
+        if (request.AmountPaid < 0)
+        {
+            return "Amount paid cannot be negative.";
+        }
+
         return null;
     }
 

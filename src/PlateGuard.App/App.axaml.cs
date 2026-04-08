@@ -6,6 +6,7 @@ using System.Linq;
 using Avalonia.Markup.Xaml;
 using PlateGuard.App.ViewModels;
 using PlateGuard.App.Views;
+using PlateGuard.Core.Interfaces;
 using PlateGuard.Core.Services;
 using PlateGuard.Data.Repositories;
 
@@ -26,17 +27,21 @@ public partial class App : Application
             var promotionRepository = new PromotionRepository();
             var promotionUsageRepository = new PromotionUsageRepository();
             var settingsRepository = new SettingsRepository();
+            IVehicleService vehicleService = new VehicleService(vehicleRepository);
+            IPromotionService promotionService = new PromotionService(promotionRepository);
+            IPromotionUsageService promotionUsageService = new PromotionUsageService(
+                vehicleRepository,
+                promotionRepository,
+                promotionUsageRepository,
+                settingsRepository);
+            var mainWindowViewModel = new MainWindowViewModel(
+                vehicleService,
+                promotionService,
+                promotionUsageService);
 
-            desktop.MainWindow = new MainWindow
+            desktop.MainWindow = new MainWindow(promotionUsageService)
             {
-                DataContext = new MainWindowViewModel(
-                    new VehicleService(vehicleRepository),
-                    new PromotionService(promotionRepository),
-                    new PromotionUsageService(
-                        vehicleRepository,
-                        promotionRepository,
-                        promotionUsageRepository,
-                        settingsRepository)),
+                DataContext = mainWindowViewModel,
             };
         }
 
