@@ -26,6 +26,7 @@ public partial class App : Application
             var vehicleRepository = new VehicleRepository();
             var promotionRepository = new PromotionRepository();
             var promotionUsageRepository = new PromotionUsageRepository();
+            var promotionUsageTransactionalWriter = new PromotionUsageTransactionalWriter();
             var settingsRepository = new SettingsRepository();
             IVehicleService vehicleService = new VehicleService(vehicleRepository);
             IPromotionService promotionService = new PromotionService(promotionRepository);
@@ -33,7 +34,8 @@ public partial class App : Application
                 vehicleRepository,
                 promotionRepository,
                 promotionUsageRepository,
-                settingsRepository);
+                settingsRepository,
+                promotionUsageTransactionalWriter);
             ISettingsService settingsService = new SettingsService(settingsRepository);
             IExportService exportService = new ExportService(settingsRepository);
             var mainWindowViewModel = new MainWindowViewModel(

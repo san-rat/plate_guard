@@ -6,6 +6,7 @@ public interface IPromotionUsageRepository
 {
     Task<PromotionUsage?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PromotionUsage>> GetByVehicleIdAsync(int vehicleId, CancellationToken cancellationToken = default);
+    Task<PromotionUsage?> GetByVehicleIdAndPromotionIdAsync(int vehicleId, int promotionId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PromotionUsageRecord>> SearchRecordsAsync(PromotionUsageRecordQuery query, CancellationToken cancellationToken = default);
     Task<int> CountByPromotionIdAsync(int promotionId, CancellationToken cancellationToken = default);
     Task<bool> ExistsAsync(int vehicleId, int promotionId, CancellationToken cancellationToken = default);

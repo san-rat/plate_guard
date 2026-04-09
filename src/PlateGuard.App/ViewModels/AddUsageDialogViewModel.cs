@@ -174,7 +174,7 @@ public partial class AddUsageDialogViewModel : ViewModelBase
                 DiscountedPrice = ParseNullableDecimal(DiscountedPriceText),
                 AmountPaid = ParseNullableDecimal(AmountPaidText),
                 Notes = NormalizeOptionalText(Notes),
-                ServiceDate = DateTime.UtcNow
+                ServiceDate = DateTime.Today
             };
 
             LastSaveResult = await _promotionUsageService.SaveVehicleAndUsageAsync(saveRequest);

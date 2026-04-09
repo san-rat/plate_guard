@@ -78,12 +78,26 @@ var noPromotionResult = await services.PromotionUsageService.SaveVehicleAndUsage
 });
 Assert(!noPromotionResult.IsSuccess && noPromotionResult.Message == "Promotion is required.", "Missing promotion validation failed.");
 
+var atomicSaveFailure = await services.PromotionUsageTransactionalWriter.SaveVehicleAndUsageAsync(
+    null,
+    new SavePromotionUsageRequest
+    {
+        VehicleNumberRaw = "ROLL-1001",
+        PhoneNumber = "0700000001",
+        PromotionId = int.MaxValue,
+        ServiceDate = DateTime.UtcNow
+    });
+Assert(!atomicSaveFailure.IsSuccess, "Transactional save should fail when the usage insert is invalid.");
+var rolledBackVehicle = await services.VehicleService.FindByVehicleNumberAsync("ROLL-1001");
+Assert(rolledBackVehicle is null, "Vehicle insert should roll back when the usage insert fails.");
+
 var unknownVehicle = await services.VehicleService.FindByVehicleNumberAsync("ZZZ-9999");
 Assert(unknownVehicle is null, "Unknown vehicle search should return no result before saving.");
 
 var eligibilityBeforeSave = await services.PromotionUsageService.CheckEligibilityAsync("cab-1234", promotion.Id);
 Assert(eligibilityBeforeSave.IsEligible, "Vehicle should be eligible before any usage is saved.");
 
+var requestedSaveServiceDate = new DateTime(2026, 4, 9, 18, 45, 12, DateTimeKind.Utc);
 var saveResult = await services.PromotionUsageService.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
 {
     VehicleNumberRaw = "cab-1234",
@@ -94,7 +108,7 @@ var saveResult = await services.PromotionUsageService.SaveVehicleAndUsageAsync(n
     PromotionId = promotion.Id,
     Mileage = 120000,
     AmountPaid = 5000m,
-    ServiceDate = DateTime.UtcNow
+    ServiceDate = requestedSaveServiceDate
 });
 
 Assert(saveResult.IsSuccess, "Combined save flow failed.");
@@ -104,11 +118,70 @@ Assert(saveResult.PromotionUsage is not null, "Combined save flow did not return
 var vehicle = saveResult.Vehicle!;
 var usage = saveResult.PromotionUsage!;
 Assert(vehicle.VehicleNumberNormalized == "CAB1234", "Vehicle number normalization did not persist correctly.");
+Assert(usage.ServiceDate == requestedSaveServiceDate.Date, "Save flow should persist the service date as a date-only value.");
 Assert(await services.PromotionUsageRepository.ExistsAsync(vehicle.Id, promotion.Id), "Promotion usage existence check failed.");
+
+var atomicUpdateFailure = await services.PromotionUsageTransactionalWriter.UpdateUsageRecordAsync(
+    new Vehicle
+    {
+        Id = vehicle.Id,
+        VehicleNumberRaw = vehicle.VehicleNumberRaw,
+        VehicleNumberNormalized = vehicle.VehicleNumberNormalized,
+        PhoneNumber = null!,
+        OwnerName = vehicle.OwnerName,
+        Brand = vehicle.Brand,
+        Model = vehicle.Model,
+        CreatedAt = vehicle.CreatedAt,
+        UpdatedAt = vehicle.UpdatedAt
+    },
+    new PromotionUsage
+    {
+        Id = usage.Id,
+        VehicleId = usage.VehicleId,
+        PromotionId = usage.PromotionId,
+        ServiceDate = usage.ServiceDate.AddDays(1),
+        Mileage = usage.Mileage,
+        NormalPrice = usage.NormalPrice,
+        DiscountedPrice = usage.DiscountedPrice,
+        AmountPaid = 7777m,
+        Notes = "Should roll back",
+        CreatedAt = usage.CreatedAt,
+        UpdatedAt = usage.UpdatedAt
+    });
+Assert(!atomicUpdateFailure.IsSuccess, "Transactional update should fail when the vehicle update is invalid.");
+var usageAfterFailedUpdate = await services.PromotionUsageRepository.GetByIdAsync(usage.Id)
+    ?? throw new InvalidOperationException("Usage record should still exist after a failed transactional update.");
+var vehicleAfterFailedUpdate = await services.VehicleService.FindByVehicleNumberAsync("CAB-1234")
+    ?? throw new InvalidOperationException("Vehicle should still exist after a failed transactional update.");
+Assert(usageAfterFailedUpdate.ServiceDate == usage.ServiceDate, "Usage service date should roll back when the transactional update fails.");
+Assert(usageAfterFailedUpdate.AmountPaid == usage.AmountPaid, "Usage amount should roll back when the transactional update fails.");
+Assert(usageAfterFailedUpdate.Notes == usage.Notes, "Usage notes should roll back when the transactional update fails.");
+Assert(vehicleAfterFailedUpdate.PhoneNumber == vehicle.PhoneNumber, "Vehicle phone number should roll back when the transactional update fails.");
 
 var eligibilityAfterSave = await services.PromotionUsageService.CheckEligibilityAsync(vehicle.Id, promotion.Id);
 Assert(!eligibilityAfterSave.IsEligible, "Vehicle should not be eligible after usage is saved.");
 Assert(eligibilityAfterSave.ExistingUsage?.Id == usage.Id, "Eligibility check did not return the existing usage.");
+
+var requestedUpdateServiceDate = new DateTime(2026, 4, 11, 15, 20, 45, DateTimeKind.Local);
+var updateResult = await services.PromotionUsageService.UpdateUsageRecordAsync(new UpdatePromotionUsageRecordRequest
+{
+    PromotionUsageId = usage.Id,
+    ServiceDate = requestedUpdateServiceDate,
+    PhoneNumber = vehicle.PhoneNumber,
+    OwnerName = vehicle.OwnerName,
+    Brand = vehicle.Brand,
+    Model = vehicle.Model,
+    Mileage = usage.Mileage,
+    NormalPrice = usage.NormalPrice,
+    DiscountedPrice = usage.DiscountedPrice,
+    AmountPaid = usage.AmountPaid,
+    Notes = usage.Notes
+});
+Assert(updateResult.IsSuccess, "Updating a usage record with a timeful service date failed.");
+var usageAfterUpdate = await services.PromotionUsageRepository.GetByIdAsync(usage.Id)
+    ?? throw new InvalidOperationException("Usage record should exist after update.");
+Assert(usageAfterUpdate.ServiceDate == requestedUpdateServiceDate.Date, "Update flow should persist the service date as a date-only value.");
+usage = usageAfterUpdate;
 
 var duplicateResult = await services.PromotionUsageService.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
 {
@@ -270,7 +343,10 @@ Console.WriteLine($"Settings seeded: {settings.Id}");
 Console.WriteLine($"Settings updated: {settingsUpdateResult.Settings?.ShopName} -> {settingsUpdateResult.Settings?.ExportFolder}");
 Console.WriteLine($"Unknown vehicle search empty: {unknownVehicle is null}");
 Console.WriteLine($"Validation checks passed: blank vehicle, blank phone, missing promotion");
+Console.WriteLine($"Atomic save rollback passed: {!atomicSaveFailure.IsSuccess && rolledBackVehicle is null}");
 Console.WriteLine($"Vehicle created: {vehicle.VehicleNumberNormalized} ({vehicle.OwnerName})");
+Console.WriteLine($"Service date normalization passed: {usage.ServiceDate == requestedUpdateServiceDate.Date}");
+Console.WriteLine($"Atomic update rollback passed: {!atomicUpdateFailure.IsSuccess}");
 Console.WriteLine($"Promotions created: {promotion.PromotionName}, {secondPromotion.PromotionName}");
 Console.WriteLine($"Duplicate blocked: {!duplicateResult.IsSuccess}");
 Console.WriteLine($"Inactive promotion blocked: {!inactivePromotionSaveResult.IsSuccess}");
@@ -290,6 +366,7 @@ static TestServices CreateServices()
     IPromotionRepository promotionRepository = new PromotionRepository();
     IPromotionUsageRepository promotionUsageRepository = new PromotionUsageRepository();
     ISettingsRepository settingsRepository = new SettingsRepository();
+    IPromotionUsageTransactionalWriter promotionUsageTransactionalWriter = new PromotionUsageTransactionalWriter();
 
     IVehicleService vehicleService = new VehicleService(vehicleRepository);
     IPromotionService promotionService = new PromotionService(promotionRepository);
@@ -297,7 +374,8 @@ static TestServices CreateServices()
         vehicleRepository,
         promotionRepository,
         promotionUsageRepository,
-        settingsRepository);
+        settingsRepository,
+        promotionUsageTransactionalWriter);
     ISettingsService settingsService = new SettingsService(settingsRepository);
     IExportService exportService = new ExportService(settingsRepository);
 
@@ -306,6 +384,7 @@ static TestServices CreateServices()
         promotionRepository,
         promotionUsageRepository,
         settingsRepository,
+        promotionUsageTransactionalWriter,
         vehicleService,
         promotionService,
         promotionUsageService,
@@ -363,6 +442,7 @@ internal sealed record TestServices(
     IPromotionRepository PromotionRepository,
     IPromotionUsageRepository PromotionUsageRepository,
     ISettingsRepository SettingsRepository,
+    IPromotionUsageTransactionalWriter PromotionUsageTransactionalWriter,
     IVehicleService VehicleService,
     IPromotionService PromotionService,
     IPromotionUsageService PromotionUsageService,

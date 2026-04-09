@@ -31,6 +31,18 @@ public sealed class PromotionUsageRepository() : RepositoryBase(new PlateGuardDb
         return entities.Select(PromotionUsageMapper.ToModel).ToList();
     }
 
+    public async Task<PromotionUsage?> GetByVehicleIdAndPromotionIdAsync(int vehicleId, int promotionId, CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = CreateDbContext();
+        var entity = await dbContext.PromotionUsages
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                usage => usage.VehicleId == vehicleId && usage.PromotionId == promotionId,
+                cancellationToken);
+
+        return entity is null ? null : PromotionUsageMapper.ToModel(entity);
+    }
+
     public async Task<IReadOnlyList<PromotionUsageRecord>> SearchRecordsAsync(PromotionUsageRecordQuery query, CancellationToken cancellationToken = default)
     {
         query ??= new PromotionUsageRecordQuery();
@@ -121,7 +133,7 @@ public sealed class PromotionUsageRepository() : RepositoryBase(new PlateGuardDb
 
         var entity = PromotionUsageMapper.ToEntity(promotionUsage);
         entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
-        entity.ServiceDate = entity.ServiceDate == default ? DateTime.UtcNow : entity.ServiceDate;
+        entity.ServiceDate = entity.ServiceDate == default ? DateTime.Today : entity.ServiceDate.Date;
 
         await dbContext.PromotionUsages.AddAsync(entity, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -136,6 +148,7 @@ public sealed class PromotionUsageRepository() : RepositoryBase(new PlateGuardDb
         var entity = await dbContext.PromotionUsages.FirstOrDefaultAsync(existing => existing.Id == promotionUsage.Id, cancellationToken)
             ?? throw new InvalidOperationException($"Promotion usage with id {promotionUsage.Id} was not found.");
 
+        promotionUsage.ServiceDate = promotionUsage.ServiceDate.Date;
         promotionUsage.UpdatedAt = DateTime.UtcNow;
         PromotionUsageMapper.UpdateEntity(entity, promotionUsage);
 

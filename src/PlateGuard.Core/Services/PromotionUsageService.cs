@@ -8,12 +8,14 @@ public sealed class PromotionUsageService(
     IVehicleRepository vehicleRepository,
     IPromotionRepository promotionRepository,
     IPromotionUsageRepository promotionUsageRepository,
-    ISettingsRepository settingsRepository) : IPromotionUsageService
+    ISettingsRepository settingsRepository,
+    IPromotionUsageTransactionalWriter promotionUsageTransactionalWriter) : IPromotionUsageService
 {
     private readonly IVehicleRepository _vehicleRepository = vehicleRepository;
     private readonly IPromotionRepository _promotionRepository = promotionRepository;
     private readonly IPromotionUsageRepository _promotionUsageRepository = promotionUsageRepository;
     private readonly ISettingsRepository _settingsRepository = settingsRepository;
+    private readonly IPromotionUsageTransactionalWriter _promotionUsageTransactionalWriter = promotionUsageTransactionalWriter;
 
     public async Task<EligibilityCheckResult> CheckEligibilityAsync(string vehicleNumber, int promotionId, CancellationToken cancellationToken = default)
     {
@@ -68,6 +70,7 @@ public sealed class PromotionUsageService(
             };
         }
 
+        request.ServiceDate = NormalizeServiceDate(request.ServiceDate);
         var existingVehicle = await _vehicleRepository.GetByNormalizedNumberAsync(request.VehicleNumberRaw, cancellationToken);
         var eligibility = await CheckEligibilityAsync(existingVehicle, promotion.Id, cancellationToken);
         if (!eligibility.IsEligible)
@@ -81,33 +84,20 @@ public sealed class PromotionUsageService(
             };
         }
 
-        var createdNewVehicle = existingVehicle is null;
-        var vehicle = createdNewVehicle
-            ? await _vehicleRepository.AddAsync(CreateVehicle(request), cancellationToken)
-            : await UpdateVehicleAsync(existingVehicle!, request, cancellationToken);
+        var saveResult = await _promotionUsageTransactionalWriter.SaveVehicleAndUsageAsync(
+            existingVehicle,
+            request,
+            cancellationToken);
 
-        var promotionUsage = new PromotionUsage
+        if (!saveResult.IsSuccess)
         {
-            VehicleId = vehicle.Id,
-            PromotionId = promotion.Id,
-            ServiceDate = request.ServiceDate ?? DateTime.UtcNow,
-            Mileage = request.Mileage,
-            NormalPrice = request.NormalPrice,
-            DiscountedPrice = request.DiscountedPrice,
-            AmountPaid = request.AmountPaid,
-            Notes = request.Notes
-        };
+            saveResult.Vehicle ??= existingVehicle;
+            saveResult.PromotionUsage ??= eligibility.ExistingUsage;
+            return saveResult;
+        }
 
-        var savedUsage = await _promotionUsageRepository.AddAsync(promotionUsage, cancellationToken);
-
-        return new SavePromotionUsageResult
-        {
-            IsSuccess = true,
-            Message = "Record saved successfully.",
-            Vehicle = vehicle,
-            PromotionUsage = savedUsage,
-            CreatedNewVehicle = createdNewVehicle
-        };
+        saveResult.CreatedNewVehicle = existingVehicle is null;
+        return saveResult;
     }
 
     public async Task<OperationResult> UpdateUsageRecordAsync(UpdatePromotionUsageRecordRequest request, CancellationToken cancellationToken = default)
@@ -130,7 +120,7 @@ public sealed class PromotionUsageService(
             return Failure("Vehicle record was not found.");
         }
 
-        existingUsage.ServiceDate = request.ServiceDate;
+        existingUsage.ServiceDate = NormalizeServiceDate(request.ServiceDate);
         existingUsage.Mileage = request.Mileage;
         existingUsage.NormalPrice = request.NormalPrice;
         existingUsage.DiscountedPrice = request.DiscountedPrice;
@@ -142,15 +132,10 @@ public sealed class PromotionUsageService(
         vehicle.Brand = NormalizeOptionalText(request.Brand);
         vehicle.Model = NormalizeOptionalText(request.Model);
 
-        var usageUpdateResult = await UpdateUsageAsync(existingUsage, cancellationToken);
-        if (!usageUpdateResult.IsSuccess)
-        {
-            return usageUpdateResult;
-        }
-
-        await _vehicleRepository.UpdateAsync(vehicle, cancellationToken);
-
-        return Success("Record updated successfully.");
+        return await _promotionUsageTransactionalWriter.UpdateUsageRecordAsync(
+            vehicle,
+            existingUsage,
+            cancellationToken);
     }
 
     public async Task<OperationResult> UpdateUsageAsync(PromotionUsage promotionUsage, CancellationToken cancellationToken = default)
@@ -183,6 +168,7 @@ public sealed class PromotionUsageService(
             return Failure("This vehicle has already used the selected promotion.");
         }
 
+        promotionUsage.ServiceDate = NormalizeServiceDate(promotionUsage.ServiceDate);
         await _promotionUsageRepository.UpdateAsync(promotionUsage, cancellationToken);
 
         return Success("Record updated successfully.");
@@ -272,32 +258,7 @@ public sealed class PromotionUsageService(
 
     private async Task<PromotionUsage?> FindExistingUsageAsync(int vehicleId, int promotionId, CancellationToken cancellationToken)
     {
-        var usageHistory = await _promotionUsageRepository.GetByVehicleIdAsync(vehicleId, cancellationToken);
-        return usageHistory.FirstOrDefault(usage => usage.PromotionId == promotionId);
-    }
-
-    private async Task<Vehicle> UpdateVehicleAsync(Vehicle existingVehicle, SavePromotionUsageRequest request, CancellationToken cancellationToken)
-    {
-        existingVehicle.VehicleNumberRaw = request.VehicleNumberRaw.Trim();
-        existingVehicle.PhoneNumber = request.PhoneNumber.Trim();
-        existingVehicle.OwnerName = string.IsNullOrWhiteSpace(request.OwnerName) ? existingVehicle.OwnerName : request.OwnerName.Trim();
-        existingVehicle.Brand = string.IsNullOrWhiteSpace(request.Brand) ? existingVehicle.Brand : request.Brand.Trim();
-        existingVehicle.Model = string.IsNullOrWhiteSpace(request.Model) ? existingVehicle.Model : request.Model.Trim();
-
-        await _vehicleRepository.UpdateAsync(existingVehicle, cancellationToken);
-        return existingVehicle;
-    }
-
-    private static Vehicle CreateVehicle(SavePromotionUsageRequest request)
-    {
-        return new Vehicle
-        {
-            VehicleNumberRaw = request.VehicleNumberRaw.Trim(),
-            PhoneNumber = request.PhoneNumber.Trim(),
-            OwnerName = request.OwnerName?.Trim(),
-            Brand = request.Brand?.Trim(),
-            Model = request.Model?.Trim()
-        };
+        return await _promotionUsageRepository.GetByVehicleIdAndPromotionIdAsync(vehicleId, promotionId, cancellationToken);
     }
 
     private static string? ValidateSaveRequest(SavePromotionUsageRequest request)
@@ -383,6 +344,16 @@ public sealed class PromotionUsageService(
     private static string? NormalizeOptionalText(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static DateTime NormalizeServiceDate(DateTime? serviceDate)
+    {
+        return (serviceDate ?? DateTime.Today).Date;
+    }
+
+    private static DateTime NormalizeServiceDate(DateTime serviceDate)
+    {
+        return serviceDate.Date;
     }
 
     private static OperationResult Success(string message) => new() { IsSuccess = true, Message = message };

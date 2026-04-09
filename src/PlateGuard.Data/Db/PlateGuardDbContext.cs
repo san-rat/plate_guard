@@ -76,6 +76,7 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
         builder.Property(usage => usage.CreatedAt)
             .IsRequired();
 
+        builder.HasIndex(usage => usage.ServiceDate);
         builder.HasIndex(usage => usage.VehicleId);
         builder.HasIndex(usage => usage.PromotionId);
 
