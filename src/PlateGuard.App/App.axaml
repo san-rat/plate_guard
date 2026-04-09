@@ -260,7 +260,12 @@
             <Setter Property="Padding" Value="42,0,14,0"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+
+        <Style Selector="TextBox.searchHeroBox:focus">
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BrushAccentText}"/>
         </Style>
 
         <Style Selector="TextBox:focus">
@@ -284,6 +289,14 @@
 
         <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource BrushRowHover}"/>
+        </Style>
+
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource BrushAccentSurface}"/>
+        </Style>
+
+        <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource BrushAccentBorder}"/>
         </Style>
     </Application.Styles>
 </Application>

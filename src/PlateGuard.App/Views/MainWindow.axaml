@@ -13,6 +13,8 @@
         Background="{StaticResource BrushPageBackground}"
         Icon="/Assets/favicon.ico"
         Title="PlateGuard"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="-1"
         Width="1240"
         Height="800"
         MinWidth="1080"
@@ -251,18 +253,16 @@
                                     <Grid IsVisible="{Binding HasNoSearchResults}"
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Center"
-                                          Width="250"
-                                          MinHeight="140">
+                                          Margin="0,40">
                                         <shapes:Rectangle Stroke="#CBD5E1"
                                                           StrokeThickness="2"
                                                           StrokeDashArray="2,2"
                                                           RadiusX="8"
                                                           RadiusY="8"
                                                           Fill="Transparent"/>
-                                        <StackPanel Margin="24"
+                                        <StackPanel Margin="32,24"
                                                     VerticalAlignment="Center"
                                                     HorizontalAlignment="Center"
-                                                    MaxWidth="190"
                                                     Spacing="4">
                                             <TextBlock Text="{Binding EmptyStateTitle}"
                                                        FontSize="17"
@@ -283,7 +283,7 @@
                               RowDefinitions="Auto,Auto"
                               RowSpacing="16">
                             <Border Classes="surfaceCard"
-                                    Padding="14">
+                                    Padding="20">
                                 <StackPanel Spacing="0">
                                     <TextBlock Text="Selected Vehicle"
                                                Classes="sectionTitle"/>
@@ -373,7 +373,7 @@
                     </Grid>
 
                     <Border Classes="surfaceCard"
-                            Padding="14">
+                            Padding="20">
                         <Grid RowDefinitions="Auto,*">
                             <TextBlock Text="Promotion History"
                                        Classes="sectionTitle"/>
@@ -407,18 +407,16 @@
                                 <Grid IsVisible="{Binding HasNoHistory}"
                                       VerticalAlignment="Center"
                                       HorizontalAlignment="Center"
-                                      Width="280"
-                                      MinHeight="120">
+                                      Margin="0,30">
                                     <shapes:Rectangle Stroke="#CBD5E1"
                                                       StrokeThickness="2"
                                                       StrokeDashArray="2,2"
                                                       RadiusX="8"
                                                       RadiusY="8"
                                                       Fill="Transparent"/>
-                                    <StackPanel Margin="24"
+                                    <StackPanel Margin="36,20"
                                                 VerticalAlignment="Center"
                                                 HorizontalAlignment="Center"
-                                                MaxWidth="220"
                                                 Spacing="4">
                                         <TextBlock Text="No promotion history"
                                                    FontSize="17"
@@ -479,7 +477,7 @@
                     <Grid ColumnDefinitions="380,*"
                           ColumnSpacing="20">
                         <Border Classes="surfaceCard"
-                                Padding="14"
+                                Padding="20"
                                 MinHeight="380">
                             <Grid RowDefinitions="Auto,*">
                                 <TextBlock Text="Promotion List"
@@ -524,18 +522,16 @@
                                     <Grid IsVisible="{Binding HasNoPromotionManagementItems}"
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Center"
-                                          Width="290"
-                                          MinHeight="160">
+                                          Margin="0,40">
                                         <shapes:Rectangle Stroke="#CBD5E1"
                                                           StrokeThickness="2"
                                                           StrokeDashArray="2,2"
                                                           RadiusX="8"
                                                           RadiusY="8"
                                                           Fill="Transparent"/>
-                                        <StackPanel Margin="24"
+                                        <StackPanel Margin="40,28"
                                                     VerticalAlignment="Center"
                                                     HorizontalAlignment="Center"
-                                                    MaxWidth="220"
                                                     Spacing="8">
                                             <TextBlock Text="{Binding PromotionManagementEmptyTitle}"
                                                        FontSize="17"
@@ -559,13 +555,14 @@
 
                         <Border Grid.Column="1"
                                 Classes="surfaceCard"
-                                Padding="14">
+                                Padding="20">
                             <Grid RowDefinitions="Auto,*"
                                   RowSpacing="14">
                                 <Grid ColumnDefinitions="*,Auto,Auto"
                                       ColumnSpacing="10">
                                     <TextBlock Text="Selected Promotion"
-                                               Classes="sectionTitle"/>
+                                               Classes="sectionTitle"
+                                               VerticalAlignment="Center"/>
                                     <Button Grid.Column="1"
                                             Classes="secondary"
                                             MinWidth="120"
@@ -732,7 +729,7 @@
                     <Grid ColumnDefinitions="500,*"
                           ColumnSpacing="20">
                         <Border Classes="surfaceCard"
-                                Padding="14"
+                                Padding="20"
                                 MinHeight="430">
                             <Grid RowDefinitions="Auto,*">
                                 <TextBlock Text="Records"
@@ -780,18 +777,16 @@
                                     <Grid IsVisible="{Binding HasNoHistoryRecords}"
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Center"
-                                          Width="290"
-                                          MinHeight="140">
+                                          Margin="0,40">
                                         <shapes:Rectangle Stroke="#CBD5E1"
                                                           StrokeThickness="2"
                                                           StrokeDashArray="2,2"
                                                           RadiusX="8"
                                                           RadiusY="8"
                                                           Fill="Transparent"/>
-                                        <StackPanel Margin="24"
+                                        <StackPanel Margin="40,24"
                                                     VerticalAlignment="Center"
                                                     HorizontalAlignment="Center"
-                                                    MaxWidth="220"
                                                     Spacing="4">
                                             <TextBlock Text="{Binding HistoryRecordsEmptyTitle}"
                                                        FontSize="17"
@@ -810,13 +805,14 @@
 
                         <Border Grid.Column="1"
                                 Classes="surfaceCard"
-                                Padding="14">
+                                Padding="20">
                             <Grid RowDefinitions="Auto,*"
                                   RowSpacing="14">
                                 <Grid ColumnDefinitions="*,Auto,Auto"
                                       ColumnSpacing="10">
                                     <TextBlock Text="Selected Record"
-                                               Classes="sectionTitle"/>
+                                               Classes="sectionTitle"
+                                               VerticalAlignment="Center"/>
                                     <Button Grid.Column="1"
                                             Classes="secondary"
                                             MinWidth="104"
@@ -835,98 +831,83 @@
                                       ColumnDefinitions="*,*"
                                       RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
                                       ColumnSpacing="18"
-                                      RowSpacing="12">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Text="VEHICLE NUMBER"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryVehicleNumber}"
-                                                   Classes="keyValue"/>
-                                    </StackPanel>
+                                      RowSpacing="0">
+                                    <Border Grid.Row="0" Grid.Column="0" Padding="0,12,8,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="VEHICLE NUMBER" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryVehicleNumber}" Classes="keyValue"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Column="1"
-                                                Spacing="2">
-                                        <TextBlock Text="PROMOTION"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryPromotionName}"
-                                                   Classes="value"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="0" Grid.Column="1" Padding="8,12,0,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="PROMOTION" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryPromotionName}" Classes="value"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="1"
-                                                Spacing="2">
-                                        <TextBlock Text="SERVICE DATE"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryServiceDate}"
-                                                   Classes="value"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="1" Grid.Column="0" Padding="0,12,8,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="SERVICE DATE" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryServiceDate}" Classes="value"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="1"
-                                                Grid.Column="1"
-                                                Spacing="2">
-                                        <TextBlock Text="STATUS"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryRecordStatus}"
-                                                   Classes="value"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="1" Grid.Column="1" Padding="8,12,0,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="STATUS" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryRecordStatus}" Classes="value"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="2"
-                                                Spacing="2">
-                                        <TextBlock Text="OWNER"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryOwner}"
-                                                   Classes="value"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="2" Grid.Column="0" Padding="0,12,8,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="OWNER" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryOwner}" Classes="value"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="2"
-                                                Grid.Column="1"
-                                                Spacing="2">
-                                        <TextBlock Text="PHONE"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryPhone}"
-                                                   Classes="value"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="2" Grid.Column="1" Padding="8,12,0,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="PHONE" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryPhone}" Classes="value"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="3"
-                                                Spacing="2">
-                                        <TextBlock Text="BRAND / MODEL"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryBrandModel}"
-                                                   Classes="value"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="3" Grid.Column="0" Padding="0,12,8,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="BRAND / MODEL" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryBrandModel}" Classes="value"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="3"
-                                                Grid.Column="1"
-                                                Spacing="2">
-                                        <TextBlock Text="MILEAGE"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryMileage}"
-                                                   Classes="value"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="3" Grid.Column="1" Padding="8,12,0,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="MILEAGE" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryMileage}" Classes="value"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="4"
-                                                Spacing="2">
-                                        <TextBlock Text="AMOUNT PAID"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryAmountPaid}"
-                                                   Classes="value"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="4" Grid.Column="0" Padding="0,12,8,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="AMOUNT PAID" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryAmountPaid}" Classes="value"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="4"
-                                                Grid.Column="1"
-                                                Spacing="2">
-                                        <TextBlock Text="PRICING"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryPricing}"
-                                                   Classes="muted"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="4" Grid.Column="1" Padding="8,12,0,12" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="PRICING" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryPricing}" Classes="muted"/>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Grid.Row="5"
-                                                Grid.ColumnSpan="2"
-                                                Spacing="2">
-                                        <TextBlock Text="NOTES"
-                                                   Classes="label"/>
-                                        <TextBlock Text="{Binding SelectedHistoryNotes}"
-                                                   Classes="muted"/>
-                                    </StackPanel>
+                                    <Border Grid.Row="5" Grid.ColumnSpan="2" Padding="0,12,0,0">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="NOTES" Classes="label"/>
+                                            <TextBlock Text="{Binding SelectedHistoryNotes}" Classes="muted"/>
+                                        </StackPanel>
+                                    </Border>
                                 </Grid>
                             </Grid>
                         </Border>
