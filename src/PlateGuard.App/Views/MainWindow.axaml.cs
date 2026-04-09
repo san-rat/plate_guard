@@ -1,14 +1,13 @@
 using System;
 using Avalonia.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using PlateGuard.App.ViewModels;
-using PlateGuard.Core.Interfaces;
 
 namespace PlateGuard.App.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly IPromotionService? _promotionService;
-    private readonly IPromotionUsageService? _promotionUsageService;
+    private readonly IServiceProvider? _serviceProvider;
     private MainWindowViewModel? _viewModel;
 
     public MainWindow()
@@ -17,10 +16,10 @@ public partial class MainWindow : Window
         DataContextChanged += OnDataContextChanged;
     }
 
-    public MainWindow(IPromotionService promotionService, IPromotionUsageService promotionUsageService) : this()
+    public MainWindow(MainWindowViewModel viewModel, IServiceProvider serviceProvider) : this()
     {
-        _promotionService = promotionService;
-        _promotionUsageService = promotionUsageService;
+        _serviceProvider = serviceProvider;
+        DataContext = viewModel;
     }
 
     protected override void OnOpened(EventArgs e)
@@ -65,12 +64,12 @@ public partial class MainWindow : Window
 
     private async void OnAddUsageRequested(AddUsageDialogRequest request)
     {
-        if (_promotionUsageService is null || _viewModel is null)
+        if (_serviceProvider is null || _viewModel is null)
         {
             return;
         }
 
-        var dialogViewModel = new AddUsageDialogViewModel(_promotionUsageService, request);
+        var dialogViewModel = ActivatorUtilities.CreateInstance<AddUsageDialogViewModel>(_serviceProvider, request);
         var dialogWindow = new AddUsageWindow
         {
             DataContext = dialogViewModel
@@ -85,12 +84,12 @@ public partial class MainWindow : Window
 
     private async void OnPromotionDialogRequested(PromotionDialogRequest request)
     {
-        if (_promotionService is null || _viewModel is null)
+        if (_serviceProvider is null || _viewModel is null)
         {
             return;
         }
 
-        var dialogViewModel = new PromotionDialogViewModel(_promotionService, request);
+        var dialogViewModel = ActivatorUtilities.CreateInstance<PromotionDialogViewModel>(_serviceProvider, request);
         var dialogWindow = new PromotionDialogWindow
         {
             DataContext = dialogViewModel
@@ -105,12 +104,12 @@ public partial class MainWindow : Window
 
     private async void OnEditUsageRequested(EditUsageDialogRequest request)
     {
-        if (_promotionUsageService is null || _viewModel is null)
+        if (_serviceProvider is null || _viewModel is null)
         {
             return;
         }
 
-        var dialogViewModel = new EditUsageDialogViewModel(_promotionUsageService, request);
+        var dialogViewModel = ActivatorUtilities.CreateInstance<EditUsageDialogViewModel>(_serviceProvider, request);
         var dialogWindow = new EditUsageWindow
         {
             DataContext = dialogViewModel
@@ -125,12 +124,12 @@ public partial class MainWindow : Window
 
     private async void OnDeleteUsageRequested(DeleteUsageDialogRequest request)
     {
-        if (_promotionUsageService is null || _viewModel is null)
+        if (_serviceProvider is null || _viewModel is null)
         {
             return;
         }
 
-        var dialogViewModel = new DeleteUsageDialogViewModel(_promotionUsageService, request);
+        var dialogViewModel = ActivatorUtilities.CreateInstance<DeleteUsageDialogViewModel>(_serviceProvider, request);
         var dialogWindow = new DeleteUsageWindow
         {
             DataContext = dialogViewModel

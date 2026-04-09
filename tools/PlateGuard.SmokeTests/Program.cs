@@ -1,9 +1,10 @@
+using Microsoft.Extensions.DependencyInjection;
+using PlateGuard.App.Composition;
 using PlateGuard.Core.Interfaces;
 using PlateGuard.Core.Models;
 using PlateGuard.Core.Services;
 using PlateGuard.App.ViewModels;
 using PlateGuard.Data.Db;
-using PlateGuard.Data.Repositories;
 
 var smokeDbPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "builds", "smoke-tests", "plateguard-smoke.db"));
 var smokeDbDirectory = Path.GetDirectoryName(smokeDbPath) ?? throw new InvalidOperationException("Smoke test database directory could not be resolved.");
@@ -15,11 +16,14 @@ DeleteIfExists($"{smokeDbPath}-wal");
 
 Environment.SetEnvironmentVariable(PlateGuardDatabasePathProvider.DatabasePathEnvironmentVariableName, smokeDbPath);
 
-var dbContextFactory = new PlateGuardDbContextFactory();
-var initializer = new PlateGuardDatabaseInitializer(dbContextFactory);
+using var serviceProvider = new ServiceCollection()
+    .AddPlateGuardApplication()
+    .BuildServiceProvider();
+
+var initializer = serviceProvider.GetRequiredService<PlateGuardDatabaseInitializer>();
 await initializer.InitializeAsync();
 
-var services = CreateServices(dbContextFactory);
+var services = CreateServices(serviceProvider);
 
 var settings = await services.SettingsRepository.GetAsync() ?? throw new InvalidOperationException("Expected seeded settings row.");
 Assert(settings.Id == AppSettings.DefaultId, "Default settings row was not seeded.");
@@ -307,7 +311,14 @@ var passwordChangeResult = await services.SettingsService.ChangeDeletePasswordAs
 });
 Assert(passwordChangeResult.IsSuccess, "Changing the delete password failed.");
 
-var restartedServices = CreateServices(dbContextFactory);
+using var restartedServiceProvider = new ServiceCollection()
+    .AddPlateGuardApplication()
+    .BuildServiceProvider();
+
+var restartedInitializer = restartedServiceProvider.GetRequiredService<PlateGuardDatabaseInitializer>();
+await restartedInitializer.InitializeAsync();
+
+var restartedServices = CreateServices(restartedServiceProvider);
 var restartedSettings = await restartedServices.SettingsService.GetAsync();
 Assert(restartedSettings.ShopName == "PlateGuard Smoke Shop", "Settings did not persist after restart.");
 Assert(restartedSettings.ExportFolder == exportFolder, "Export folder did not persist after restart.");
@@ -361,24 +372,19 @@ Console.WriteLine($"Delete old password blocked: {!deleteOldPassword.IsSuccess}"
 Console.WriteLine($"Delete correct password succeeded: {deleteCorrectPassword.IsSuccess}");
 Console.WriteLine("Smoke tests passed.");
 
-static TestServices CreateServices(PlateGuardDbContextFactory dbContextFactory)
+static TestServices CreateServices(IServiceProvider serviceProvider)
 {
-    IVehicleRepository vehicleRepository = new VehicleRepository(dbContextFactory);
-    IPromotionRepository promotionRepository = new PromotionRepository(dbContextFactory);
-    IPromotionUsageRepository promotionUsageRepository = new PromotionUsageRepository(dbContextFactory);
-    ISettingsRepository settingsRepository = new SettingsRepository(dbContextFactory);
-    IPromotionUsageTransactionalWriter promotionUsageTransactionalWriter = new PromotionUsageTransactionalWriter(dbContextFactory);
+    var vehicleRepository = serviceProvider.GetRequiredService<IVehicleRepository>();
+    var promotionRepository = serviceProvider.GetRequiredService<IPromotionRepository>();
+    var promotionUsageRepository = serviceProvider.GetRequiredService<IPromotionUsageRepository>();
+    var settingsRepository = serviceProvider.GetRequiredService<ISettingsRepository>();
+    var promotionUsageTransactionalWriter = serviceProvider.GetRequiredService<IPromotionUsageTransactionalWriter>();
 
-    IVehicleService vehicleService = new VehicleService(vehicleRepository);
-    IPromotionService promotionService = new PromotionService(promotionRepository);
-    IPromotionUsageService promotionUsageService = new PromotionUsageService(
-        vehicleRepository,
-        promotionRepository,
-        promotionUsageRepository,
-        settingsRepository,
-        promotionUsageTransactionalWriter);
-    ISettingsService settingsService = new SettingsService(settingsRepository);
-    IExportService exportService = new ExportService(settingsRepository);
+    var vehicleService = serviceProvider.GetRequiredService<IVehicleService>();
+    var promotionService = serviceProvider.GetRequiredService<IPromotionService>();
+    var promotionUsageService = serviceProvider.GetRequiredService<IPromotionUsageService>();
+    var settingsService = serviceProvider.GetRequiredService<ISettingsService>();
+    var exportService = serviceProvider.GetRequiredService<IExportService>();
 
     return new TestServices(
         vehicleRepository,

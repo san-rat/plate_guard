@@ -1,4 +1,6 @@
 ﻿using Avalonia;
+using Microsoft.Extensions.DependencyInjection;
+using PlateGuard.App.Composition;
 using PlateGuard.Data.Db;
 using System;
 
@@ -12,8 +14,13 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        var dbContextFactory = new PlateGuardDbContextFactory();
-        var databaseInitializer = new PlateGuardDatabaseInitializer(dbContextFactory);
+        using var serviceProvider = new ServiceCollection()
+            .AddPlateGuardApplication()
+            .BuildServiceProvider();
+
+        App.ConfigureServices(serviceProvider);
+
+        var databaseInitializer = serviceProvider.GetRequiredService<PlateGuardDatabaseInitializer>();
         databaseInitializer.InitializeAsync().GetAwaiter().GetResult();
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
