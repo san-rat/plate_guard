@@ -1,6 +1,7 @@
 using PlateGuard.Core.Interfaces;
 using PlateGuard.Core.Models;
 using PlateGuard.Core.Services;
+using PlateGuard.App.ViewModels;
 using PlateGuard.Data.Db;
 using PlateGuard.Data.Repositories;
 
@@ -39,6 +40,22 @@ var promotion = await services.PromotionService.CreateAsync(new Promotion
     Description = "Smoke test promotion",
     IsActive = true
 });
+
+var mainWindowViewModel = new MainWindowViewModel(
+    services.VehicleService,
+    services.PromotionService,
+    services.PromotionUsageService,
+    services.SettingsService,
+    services.ExportService);
+await WaitUntilAsync(
+    () => mainWindowViewModel.ActivePromotions.Count > 0 && mainWindowViewModel.SelectedPromotion is not null,
+    "Main window view model did not load active promotions.");
+mainWindowViewModel.SearchText = "CSA-4653";
+await WaitUntilAsync(
+    () => mainWindowViewModel.EmptyStateTitle == "No matching vehicle found" && mainWindowViewModel.SearchModeLabel == "Searching by vehicle number",
+    "Main window view model did not enter the no-match vehicle search state.");
+Assert(mainWindowViewModel.CanAddUsage, "UI state should allow Add Usage for a new vehicle when vehicle-number search has no match.");
+Assert(mainWindowViewModel.EligibilityTitle == "New vehicle can be added for this promotion", "Eligibility title for new vehicle add flow is incorrect.");
 
 var blankVehicleResult = await services.PromotionUsageService.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
 {
@@ -307,6 +324,22 @@ static async Task<Exception?> CaptureExceptionAsync(Func<Task> action)
     {
         return exception;
     }
+}
+
+static async Task WaitUntilAsync(Func<bool> condition, string message, int timeoutMs = 5000, int pollMs = 50)
+{
+    var startedAt = DateTime.UtcNow;
+    while ((DateTime.UtcNow - startedAt).TotalMilliseconds < timeoutMs)
+    {
+        if (condition())
+        {
+            return;
+        }
+
+        await Task.Delay(pollMs);
+    }
+
+    throw new InvalidOperationException(message);
 }
 
 static void Assert(bool condition, string message)

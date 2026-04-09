@@ -1,56 +1,73 @@
-# PlateGuard UI/UX Improvement Actions (Final Polish)
+# PlateGuard UI/UX Action Plan: The Final Polish
 
-The overarching layout and structural design of the PlateGuard application are now in an excellent, professional state. However, the most recent visual review highlighted a persistent alignment issue specifically inside the application's text input fields. 
+The dark sidebar and typographic hierarchy updates have dramatically improved the "premium" feel of the application. However, based on the latest screenshots, there are a few critical alignment bugs and minor layout quirks holding it back from feeling completely native. 
 
-Below are the exact technical instructions to fix the floating text within the search bars and date inputs.
+Here is the exact technical roadmap to fix these final UI issues.
 
 ---
 
-## 1. Fix Vertical Alignment in the Home Search Bar
-**Issue**: Inside the main "Search / Home" view, the placeholder text (`"Find vehicle, phone, or owner..."`) and the user's typed text sit awkwardly near the top of the search box rather than being perfectly centered vertically. 
-**Technical Cause**: The custom `searchHeroBox` style was given a large minimum height (`MinHeight="56"`), but Avalonia's default behavior for `TextBox` often aligns content to the top unless explicitly instructed otherwise through the `VerticalContentAlignment` property.
-**Action**: Force vertical centering on the specific hero search box style.
+## 1. Global Vertical Alignment Bug (CRITICAL)
+**Observation**: Across all screens, the text inside almost every interactive element is floating to the very top edge. This affects:
+- The "Clear", "Refresh", and "Add Usage" buttons.
+- The Date inputs and Search input in the History toolbar.
+- The Settings text inputs ("Optional shop name").
+- The Cancel and Delete buttons in the dialog.
 
-**Location**: `src/PlateGuard.App/App.axaml` (Inside the Style map for `searchHeroBox`)
+**Technical Fix (`App.axaml`)**:
+When we increased the `MinHeight` of buttons and textboxes globally to give them a modern desktop size, the internal text content didn't naturally center. You must explicitly apply `VerticalContentAlignment` to the global styles.
 ```xml
-<!-- Before -->
-<Style Selector="TextBox.searchHeroBox">
-    <Setter Property="MinHeight" Value="56"/>
-    <Setter Property="FontSize" Value="18"/>
-    <!-- ... other setters ... -->
+<!-- In App.axaml -->
+<Style Selector="Button">
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
 </Style>
 
-<!-- After: Add VerticalContentAlignment -->
-<Style Selector="TextBox.searchHeroBox">
-    <Setter Property="MinHeight" Value="56"/>
-    <Setter Property="FontSize" Value="18"/>
-    <Setter Property="VerticalContentAlignment" Value="Center"/> <!-- FIX -->
-    <!-- ... other setters ... -->
+<Style Selector="TextBox">
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+</Style>
+
+<Style Selector="ComboBox"> <!-- Fix the "All Promotions" dropdown text too -->
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
 </Style>
 ```
 
 ---
 
-## 2. Fix Vertical Alignment in History & Date Inputs
-**Issue**: On the "History / Records" page, all the text inputs in the filter toolbar—the main search input, the "From yyyy-MM-dd" input, and the "To yyyy-MM-dd" input—are also suffering from the same vertical off-centering issue, making them look misaligned compared to the adjacent `ComboBox` and buttons.
-**Technical Cause**: Just like the Hero Search box, the global `TextBox` style has had its `MinHeight` increased to `40` to match the buttons, but lacks the global vertical content centering command.
-**Action**: Apply a global vertical centering fix to the base `TextBox` style so every input in the entire application (including Settings inputs and the Add Usage form) perfectly centers its text.
-
-**Location**: `src/PlateGuard.App/App.axaml` (Inside the global `TextBox` Style)
-```xml
-<!-- Before -->
-<Style Selector="TextBox">
-    <Setter Property="MinHeight" Value="40"/>
-</Style>
-
-<!-- After: Add global vertical centering -->
-<Style Selector="TextBox">
-    <Setter Property="MinHeight" Value="40"/>
-    <Setter Property="VerticalContentAlignment" Value="Center"/> <!-- FIX -->
-</Style>
-```
+## 2. Redundant Search Label on Home Screen
+**Observation**: On the Search/Home screen, specifically right above the large `searchHeroBox`, there is a small blue text line that perfectly matches the placeholder text (`"Search by vehicle number, phone number..."`). This dual-labeling is redundant visual noise.
+**Technical Fix (`Views/MainWindow.axaml`)**:
+- Locate the `<TextBlock>` directly above the `searchHeroBox` (around line 176) and delete it entirely. The placeholder text inside the sleek text box is all the user needs.
 
 ---
 
-## Summary
-By injecting `<Setter Property="VerticalContentAlignment" Value="Center"/>` into both the global `TextBox` style and the specific `TextBox.searchHeroBox` style in `App.axaml`, all textual content and placeholders inside inputs—including the main search, history search, and date pickers—will correctly snap to the vertical center. This will deliver the final, pixel-perfect finish the rest of the application now possesses.
+## 3. History Date Filter Proportions
+**Observation**: The "From" and "To" date text boxes in the History tab look squished compared to the large "Search by..." box. Once the vertical alignment bug (Issue #1) is fixed, they will still feel a bit tight.
+**Technical Fix (`Views/MainWindow.axaml`)**:
+- Add explicit horizontal padding so the typed dates don't touch the borders. 
+- Example: For the `TextBox` elements handling the dates (around line 640), ensure they share the same internal padding as the main search box: `<TextBox Padding="12,0" .../>`.
+- If Avalonia's `<DatePicker>` control is available instead of a standard `TextBox`, consider switching to it for native calendar dropdowns.
+
+---
+
+## 4. Delete Record Dialog Styling
+**Observation**: In the Delete Record popup, the layout feels slightly disjointed. The buttons at the bottom ("Cancel" and "Delete") will benefit from the global centering fix (Issue #1), but the "Delete" button specifically looks like it has a washed-out pink background, which lacks contrast.
+**Technical Fix (`App.axaml` or Dialog XAML)**:
+- Instead of a pale pink background with light red text, a destructive action should either be a bold red button with white text, or an outlined red button. 
+- Ensure the `<Button Classes="danger">` (or whichever style is applied to the Delete button) sets:
+  ```xml
+  <Setter Property="Background" Value="#DC2626"/> <!-- Strong Red -->
+  <Setter Property="Foreground" Value="#FFFFFF"/> <!-- White Text -->
+  ```
+
+---
+
+## 5. Better Disabled States
+**Observation**: On the Home screen, the deactivated "Add Usage" button uses a gray background with gray text. It is very hard to read (poor contrast compliance).
+**Technical Fix (`App.axaml`)**:
+- Update the `:disabled` pseudo-class for Buttons so that the text remains readable.
+  ```xml
+  <Style Selector="Button:disabled">
+      <Setter Property="Background" Value="#E2E8F0"/>
+      <Setter Property="Foreground" Value="#94A3B8"/> <!-- Darker slate grey for contrast -->
+  </Style>
+  ```

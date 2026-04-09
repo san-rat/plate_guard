@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\PlateGuard.App\PlateGuard.App.csproj" />
     <ProjectReference Include="..\..\src\PlateGuard.Core\PlateGuard.Core.csproj" />
     <ProjectReference Include="..\..\src\PlateGuard.Data\PlateGuard.Data.csproj" />
   </ItemGroup>

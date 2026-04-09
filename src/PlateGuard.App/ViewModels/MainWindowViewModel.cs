@@ -902,6 +902,13 @@ public partial class MainWindowViewModel : ViewModelBase
                 HasSearchResults = false;
                 HasNoSearchResults = true;
                 SelectedVehicle = null;
+                SelectedVehicleHistory.Clear();
+                HasHistory = false;
+                HasNoHistory = true;
+                HistorySummary = "Select a vehicle to view promotion history.";
+                HistoryEmptyStateMessage = "No vehicle selected.";
+                UpdateSelectedVehicleSummary(null);
+                ApplyNoVehicleEligibilityState();
                 EmptyStateTitle = "No matching vehicle found";
                 EmptyStateMessage = "You can add this vehicle to the selected promotion if eligible.";
                 ResultsSummary = $"No matches for \"{query}\".";
@@ -927,6 +934,17 @@ public partial class MainWindowViewModel : ViewModelBase
             HasSearchResults = false;
             HasNoSearchResults = true;
             SelectedVehicle = null;
+            SelectedVehicleHistory.Clear();
+            HasHistory = false;
+            HasNoHistory = true;
+            HistorySummary = "Promotion history is unavailable right now.";
+            HistoryEmptyStateMessage = "The history request failed.";
+            UpdateSelectedVehicleSummary(null);
+            SetEligibilityState(
+                "Search unavailable",
+                "Review the database state and try again.",
+                canAddUsage: false,
+                EligibilityDisplayTone.Warning);
             EmptyStateTitle = "Search unavailable";
             EmptyStateMessage = "The search request failed. Review the database state and try again.";
             ResultsSummary = "Search did not complete.";
