@@ -47,7 +47,6 @@ public sealed class PromotionRepository(PlateGuardDbContextFactory dbContextFact
         await using var dbContext = CreateDbContext();
 
         var entity = PromotionMapper.ToEntity(promotion);
-        entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
 
         await dbContext.Promotions.AddAsync(entity, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);

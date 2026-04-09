@@ -78,7 +78,6 @@ public sealed class VehicleRepository(PlateGuardDbContextFactory dbContextFactor
 
         var entity = VehicleMapper.ToEntity(vehicle);
         NormalizeVehicle(entity);
-        entity.CreatedAt = entity.CreatedAt == default ? DateTime.UtcNow : entity.CreatedAt;
 
         await dbContext.Vehicles.AddAsync(entity, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
