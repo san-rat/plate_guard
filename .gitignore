@@ -258,6 +258,10 @@ orleans.codegen.cs
 Generated_Code/
 
 # Backup & report files from converting an old project file
+
+# Local project docs and working notes
+docs/
+notes/
 # to a newer Visual Studio version. Backup files are not needed,
 # because we have git ;-)
 _UpgradeReport_Files/
