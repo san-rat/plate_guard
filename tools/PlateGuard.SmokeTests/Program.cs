@@ -15,13 +15,14 @@ DeleteIfExists($"{smokeDbPath}-wal");
 
 Environment.SetEnvironmentVariable(PlateGuardDatabasePathProvider.DatabasePathEnvironmentVariableName, smokeDbPath);
 
-var initializer = new PlateGuardDatabaseInitializer();
+var dbContextFactory = new PlateGuardDbContextFactory();
+var initializer = new PlateGuardDatabaseInitializer(dbContextFactory);
 await initializer.InitializeAsync();
 
-var services = CreateServices();
+var services = CreateServices(dbContextFactory);
 
 var settings = await services.SettingsRepository.GetAsync() ?? throw new InvalidOperationException("Expected seeded settings row.");
-Assert(settings.Id == PlateGuardDatabaseInitializer.DefaultSettingsId, "Default settings row was not seeded.");
+Assert(settings.Id == AppSettings.DefaultId, "Default settings row was not seeded.");
 Assert(settings.DeletePasswordHash is { Length: 64 }, "Seeded delete password hash is invalid.");
 
 var exportFolder = Path.Combine(smokeDbDirectory, "exports");
@@ -306,7 +307,7 @@ var passwordChangeResult = await services.SettingsService.ChangeDeletePasswordAs
 });
 Assert(passwordChangeResult.IsSuccess, "Changing the delete password failed.");
 
-var restartedServices = CreateServices();
+var restartedServices = CreateServices(dbContextFactory);
 var restartedSettings = await restartedServices.SettingsService.GetAsync();
 Assert(restartedSettings.ShopName == "PlateGuard Smoke Shop", "Settings did not persist after restart.");
 Assert(restartedSettings.ExportFolder == exportFolder, "Export folder did not persist after restart.");
@@ -360,13 +361,13 @@ Console.WriteLine($"Delete old password blocked: {!deleteOldPassword.IsSuccess}"
 Console.WriteLine($"Delete correct password succeeded: {deleteCorrectPassword.IsSuccess}");
 Console.WriteLine("Smoke tests passed.");
 
-static TestServices CreateServices()
+static TestServices CreateServices(PlateGuardDbContextFactory dbContextFactory)
 {
-    IVehicleRepository vehicleRepository = new VehicleRepository();
-    IPromotionRepository promotionRepository = new PromotionRepository();
-    IPromotionUsageRepository promotionUsageRepository = new PromotionUsageRepository();
-    ISettingsRepository settingsRepository = new SettingsRepository();
-    IPromotionUsageTransactionalWriter promotionUsageTransactionalWriter = new PromotionUsageTransactionalWriter();
+    IVehicleRepository vehicleRepository = new VehicleRepository(dbContextFactory);
+    IPromotionRepository promotionRepository = new PromotionRepository(dbContextFactory);
+    IPromotionUsageRepository promotionUsageRepository = new PromotionUsageRepository(dbContextFactory);
+    ISettingsRepository settingsRepository = new SettingsRepository(dbContextFactory);
+    IPromotionUsageTransactionalWriter promotionUsageTransactionalWriter = new PromotionUsageTransactionalWriter(dbContextFactory);
 
     IVehicleService vehicleService = new VehicleService(vehicleRepository);
     IPromotionService promotionService = new PromotionService(promotionRepository);

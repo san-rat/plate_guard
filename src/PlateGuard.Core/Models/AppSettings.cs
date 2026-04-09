@@ -2,6 +2,8 @@ namespace PlateGuard.Core.Models;
 
 public sealed class AppSettings
 {
+    public const int DefaultId = 1;
+
     public int Id { get; set; }
     public string? DeletePasswordHash { get; set; }
     public string? ShopName { get; set; }

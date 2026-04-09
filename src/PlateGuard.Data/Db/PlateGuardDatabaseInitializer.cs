@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using PlateGuard.Core.Helpers;
+using PlateGuard.Core.Models;
 using PlateGuard.Data.Entities;
 
 namespace PlateGuard.Data.Db;
 
-public sealed class PlateGuardDatabaseInitializer
+public sealed class PlateGuardDatabaseInitializer(PlateGuardDbContextFactory dbContextFactory)
 {
-    public const int DefaultSettingsId = 1;
     private const string DefaultDeletePassword = "admin";
-    private readonly PlateGuardDbContextFactory _dbContextFactory = new();
+    private readonly PlateGuardDbContextFactory _dbContextFactory = dbContextFactory;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -24,7 +24,7 @@ public sealed class PlateGuardDatabaseInitializer
 
         await dbContext.Database.MigrateAsync(cancellationToken);
 
-        var settingsExist = await dbContext.Settings.AnyAsync(settings => settings.Id == DefaultSettingsId, cancellationToken);
+        var settingsExist = await dbContext.Settings.AnyAsync(settings => settings.Id == AppSettings.DefaultId, cancellationToken);
         if (settingsExist)
         {
             return;
@@ -33,7 +33,7 @@ public sealed class PlateGuardDatabaseInitializer
         var utcNow = DateTime.UtcNow;
         var settings = new SettingsEntity
         {
-            Id = DefaultSettingsId,
+            Id = AppSettings.DefaultId,
             DeletePasswordHash = DeletePasswordHasher.Hash(DefaultDeletePassword),
             CreatedAt = utcNow,
             UpdatedAt = utcNow

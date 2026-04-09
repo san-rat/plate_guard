@@ -72,7 +72,7 @@ public sealed class SettingsService(ISettingsRepository settingsRepository) : IS
 
         return await _settingsRepository.UpsertAsync(new AppSettings
         {
-            Id = 1,
+            Id = AppSettings.DefaultId,
             DeletePasswordHash = DeletePasswordHasher.Hash("admin")
         }, cancellationToken);
     }

@@ -7,7 +7,7 @@ using PlateGuard.Data.Mappers;
 
 namespace PlateGuard.Data.Repositories;
 
-public sealed class VehicleRepository() : RepositoryBase(new PlateGuardDbContextFactory()), IVehicleRepository
+public sealed class VehicleRepository(PlateGuardDbContextFactory dbContextFactory) : RepositoryBase(dbContextFactory), IVehicleRepository
 {
     public async Task<Vehicle?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {

@@ -6,15 +6,14 @@ using PlateGuard.Data.Mappers;
 
 namespace PlateGuard.Data.Repositories;
 
-public sealed class SettingsRepository() : RepositoryBase(new PlateGuardDbContextFactory()), ISettingsRepository
+public sealed class SettingsRepository(PlateGuardDbContextFactory dbContextFactory) : RepositoryBase(dbContextFactory), ISettingsRepository
 {
     public async Task<AppSettings?> GetAsync(CancellationToken cancellationToken = default)
     {
         await using var dbContext = CreateDbContext();
         var entity = await dbContext.Settings
             .AsNoTracking()
-            .OrderBy(settings => settings.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(settings => settings.Id == AppSettings.DefaultId, cancellationToken);
 
         return entity is null ? null : AppSettingsMapper.ToModel(entity);
     }
@@ -23,7 +22,7 @@ public sealed class SettingsRepository() : RepositoryBase(new PlateGuardDbContex
     {
         await using var dbContext = CreateDbContext();
 
-        var settingsId = settings.Id == 0 ? PlateGuardDatabaseInitializer.DefaultSettingsId : settings.Id;
+        var settingsId = AppSettings.DefaultId;
         var existingEntity = await dbContext.Settings.FirstOrDefaultAsync(entity => entity.Id == settingsId, cancellationToken);
 
         if (existingEntity is null)

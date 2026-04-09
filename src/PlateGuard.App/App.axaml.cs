@@ -8,6 +8,7 @@ using PlateGuard.App.ViewModels;
 using PlateGuard.App.Views;
 using PlateGuard.Core.Interfaces;
 using PlateGuard.Core.Services;
+using PlateGuard.Data.Db;
 using PlateGuard.Data.Repositories;
 
 namespace PlateGuard.App;
@@ -23,11 +24,12 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var vehicleRepository = new VehicleRepository();
-            var promotionRepository = new PromotionRepository();
-            var promotionUsageRepository = new PromotionUsageRepository();
-            var promotionUsageTransactionalWriter = new PromotionUsageTransactionalWriter();
-            var settingsRepository = new SettingsRepository();
+            var dbContextFactory = new PlateGuardDbContextFactory();
+            var vehicleRepository = new VehicleRepository(dbContextFactory);
+            var promotionRepository = new PromotionRepository(dbContextFactory);
+            var promotionUsageRepository = new PromotionUsageRepository(dbContextFactory);
+            var promotionUsageTransactionalWriter = new PromotionUsageTransactionalWriter(dbContextFactory);
+            var settingsRepository = new SettingsRepository(dbContextFactory);
             IVehicleService vehicleService = new VehicleService(vehicleRepository);
             IPromotionService promotionService = new PromotionService(promotionRepository);
             IPromotionUsageService promotionUsageService = new PromotionUsageService(

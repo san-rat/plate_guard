@@ -7,7 +7,7 @@ using PlateGuard.Data.Mappers;
 
 namespace PlateGuard.Data.Repositories;
 
-public sealed class PromotionUsageRepository() : RepositoryBase(new PlateGuardDbContextFactory()), IPromotionUsageRepository
+public sealed class PromotionUsageRepository(PlateGuardDbContextFactory dbContextFactory) : RepositoryBase(dbContextFactory), IPromotionUsageRepository
 {
     public async Task<PromotionUsage?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {

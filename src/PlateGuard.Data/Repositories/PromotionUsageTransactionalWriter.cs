@@ -9,8 +9,8 @@ using PlateGuard.Data.Mappers;
 
 namespace PlateGuard.Data.Repositories;
 
-public sealed class PromotionUsageTransactionalWriter()
-    : RepositoryBase(new PlateGuardDbContextFactory()), IPromotionUsageTransactionalWriter
+public sealed class PromotionUsageTransactionalWriter(PlateGuardDbContextFactory dbContextFactory)
+    : RepositoryBase(dbContextFactory), IPromotionUsageTransactionalWriter
 {
     public async Task<SavePromotionUsageResult> SaveVehicleAndUsageAsync(
         Vehicle? existingVehicle,

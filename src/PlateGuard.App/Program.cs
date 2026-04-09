@@ -12,7 +12,8 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        var databaseInitializer = new PlateGuardDatabaseInitializer();
+        var dbContextFactory = new PlateGuardDbContextFactory();
+        var databaseInitializer = new PlateGuardDatabaseInitializer(dbContextFactory);
         databaseInitializer.InitializeAsync().GetAwaiter().GetResult();
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
