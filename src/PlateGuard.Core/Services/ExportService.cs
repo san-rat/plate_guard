@@ -30,24 +30,40 @@ public sealed class ExportService(ISettingsRepository settingsRepository) : IExp
         }
 
         var exportFolder = await ResolveExportFolderAsync(request.ExportFolder, cancellationToken);
-        Directory.CreateDirectory(exportFolder);
-
-        var prefix = string.IsNullOrWhiteSpace(request.FileNamePrefix)
-            ? "plateguard-history"
-            : request.FileNamePrefix.Trim();
-        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-        var filePath = Path.Combine(exportFolder, $"{prefix}-{timestamp}.csv");
-
-        var csvContent = BuildCsv(request.Records);
-        await File.WriteAllTextAsync(filePath, csvContent, Utf8WithBom, cancellationToken);
-
-        return new ExportPromotionUsageRecordsResult
+        try
         {
-            IsSuccess = true,
-            Message = $"Exported {request.Records.Count} record(s) to {filePath}.",
-            FilePath = filePath,
-            ExportedRecordCount = request.Records.Count
-        };
+            if (File.Exists(exportFolder))
+            {
+                return Failure("Export folder must point to a folder, not an existing file.");
+            }
+
+            Directory.CreateDirectory(exportFolder);
+
+            var prefix = string.IsNullOrWhiteSpace(request.FileNamePrefix)
+                ? "plateguard-history"
+                : request.FileNamePrefix.Trim();
+            var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+            var filePath = Path.Combine(exportFolder, $"{prefix}-{timestamp}.csv");
+
+            var csvContent = BuildCsv(request.Records);
+            await File.WriteAllTextAsync(filePath, csvContent, Utf8WithBom, cancellationToken);
+
+            return new ExportPromotionUsageRecordsResult
+            {
+                IsSuccess = true,
+                Message = $"Exported {request.Records.Count} record(s) to {filePath}.",
+                FilePath = filePath,
+                ExportedRecordCount = request.Records.Count
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return Failure(BuildExportFailureMessage(exception, exportFolder));
+        }
     }
 
     private async Task<string> ResolveExportFolderAsync(string? preferredExportFolder, CancellationToken cancellationToken)
@@ -128,6 +144,26 @@ public sealed class ExportService(ISettingsRepository settingsRepository) : IExp
         }
 
         return $"\"{sanitized.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+    }
+
+    private static string BuildExportFailureMessage(Exception exception, string exportFolder)
+    {
+        if (exception is UnauthorizedAccessException)
+        {
+            return $"Could not write to the export folder. Check permissions for {exportFolder}.";
+        }
+
+        if (exception is PathTooLongException)
+        {
+            return "Export folder path is too long.";
+        }
+
+        if (exception is ArgumentException or NotSupportedException)
+        {
+            return "Export folder path is invalid.";
+        }
+
+        return $"Could not access the export folder. Check that {exportFolder} is available and try again.";
     }
 
     private static ExportPromotionUsageRecordsResult Failure(string message)

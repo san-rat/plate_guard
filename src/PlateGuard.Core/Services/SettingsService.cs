@@ -19,9 +19,10 @@ public sealed class SettingsService(ISettingsRepository settingsRepository) : IS
 
         var settings = await GetOrCreateSettingsAsync(cancellationToken);
         var normalizedExportFolder = NormalizeOptionalText(request.ExportFolder);
-        if (normalizedExportFolder is not null && !Path.IsPathFullyQualified(normalizedExportFolder))
+        var exportFolderValidationMessage = ValidateExportFolder(normalizedExportFolder);
+        if (exportFolderValidationMessage is not null)
         {
-            return UpdateFailure("Export folder must be a full folder path.");
+            return UpdateFailure(exportFolderValidationMessage);
         }
 
         settings.ShopName = NormalizeOptionalText(request.ShopName);
@@ -80,6 +81,34 @@ public sealed class SettingsService(ISettingsRepository settingsRepository) : IS
     private static string? NormalizeOptionalText(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string? ValidateExportFolder(string? exportFolder)
+    {
+        if (exportFolder is null)
+        {
+            return null;
+        }
+
+        if (!Path.IsPathFullyQualified(exportFolder))
+        {
+            return "Export folder must be a full folder path.";
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(exportFolder);
+            if (File.Exists(fullPath))
+            {
+                return "Export folder must point to a folder, not an existing file.";
+            }
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return "Export folder path is invalid.";
+        }
+
+        return null;
     }
 
     private static UpdateAppSettingsResult UpdateSuccess(AppSettings settings, string message)

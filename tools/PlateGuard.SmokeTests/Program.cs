@@ -291,16 +291,24 @@ Assert(exportContent.Contains("Weekend Wash", StringComparison.Ordinal), "CSV ex
 
 var blockedExportTarget = Path.Combine(smokeDbDirectory, "blocked-export-target");
 await File.WriteAllTextAsync(blockedExportTarget, "This file blocks folder creation.");
-var exportFailure = await CaptureExceptionAsync(async () =>
+var invalidExportSettingsResult = await services.SettingsService.UpdateAsync(new UpdateAppSettingsRequest
 {
-    await services.ExportService.ExportPromotionUsageRecordsAsync(new ExportPromotionUsageRecordsRequest
-    {
-        Records = exportRecords,
-        ExportFolder = blockedExportTarget,
-        FileNamePrefix = "should-fail"
-    });
+    ShopName = "PlateGuard Smoke Shop",
+    ExportFolder = blockedExportTarget
 });
-Assert(exportFailure is not null, "Export to a blocked path should fail.");
+Assert(!invalidExportSettingsResult.IsSuccess, "Settings save should reject an export folder that points to an existing file.");
+Assert(invalidExportSettingsResult.Message == "Export folder must point to a folder, not an existing file.", "Invalid export folder settings message is incorrect.");
+var settingsAfterInvalidExportFolder = await services.SettingsService.GetAsync();
+Assert(settingsAfterInvalidExportFolder.ExportFolder == exportFolder, "Invalid export folder should not overwrite the saved settings.");
+
+var exportFailure = await services.ExportService.ExportPromotionUsageRecordsAsync(new ExportPromotionUsageRecordsRequest
+{
+    Records = exportRecords,
+    ExportFolder = blockedExportTarget,
+    FileNamePrefix = "should-fail"
+});
+Assert(!exportFailure.IsSuccess, "Export to a blocked path should fail.");
+Assert(exportFailure.Message == "Export folder must point to a folder, not an existing file.", "Blocked export should return a meaningful folder error.");
 DeleteIfExists(blockedExportTarget);
 
 var passwordChangeResult = await services.SettingsService.ChangeDeletePasswordAsync(new ChangeDeletePasswordRequest
@@ -365,7 +373,8 @@ Console.WriteLine($"Inactive promotion blocked: {!inactivePromotionSaveResult.Is
 Console.WriteLine($"Phone search results: {byPhone.Count}");
 Console.WriteLine($"Owner search results: {byOwner.Count}");
 Console.WriteLine($"Export created: {exportResult.FilePath}");
-Console.WriteLine($"Blocked export failed as expected: {exportFailure is not null}");
+Console.WriteLine($"Invalid export folder blocked: {!invalidExportSettingsResult.IsSuccess}");
+Console.WriteLine($"Blocked export failed as expected: {!exportFailure.IsSuccess}");
 Console.WriteLine($"Password changed: {passwordChangeResult.IsSuccess}");
 Console.WriteLine($"Restart persistence passed: {restartedHistory.Count} record(s), {restartedPromotions.Count} promotion(s)");
 Console.WriteLine($"Delete old password blocked: {!deleteOldPassword.IsSuccess}");
@@ -397,19 +406,6 @@ static TestServices CreateServices(IServiceProvider serviceProvider)
         promotionUsageService,
         settingsService,
         exportService);
-}
-
-static async Task<Exception?> CaptureExceptionAsync(Func<Task> action)
-{
-    try
-    {
-        await action();
-        return null;
-    }
-    catch (Exception exception)
-    {
-        return exception;
-    }
 }
 
 static async Task WaitUntilAsync(Func<bool> condition, string message, int timeoutMs = 5000, int pollMs = 50)
