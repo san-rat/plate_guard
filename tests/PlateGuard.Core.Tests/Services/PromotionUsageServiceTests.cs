@@ -27,6 +27,43 @@ public sealed class PromotionUsageServiceTests
     }
 
     [Fact]
+    public async Task CheckEligibilityAsync_ReturnsFailureWhenPromotionIdIsMissing()
+    {
+        var service = CreateService();
+
+        var result = await service.CheckEligibilityAsync("CSA-4653", 0);
+
+        Assert.False(result.IsEligible);
+        Assert.Equal("Promotion is required.", result.Message);
+    }
+
+    [Fact]
+    public async Task CheckEligibilityAsync_ReturnsFailureWhenPromotionDoesNotExist()
+    {
+        var service = CreateService(promotionRepository: new FakePromotionRepository());
+
+        var result = await service.CheckEligibilityAsync("CSA-4653", 5);
+
+        Assert.False(result.IsEligible);
+        Assert.Equal("Selected promotion was not found.", result.Message);
+    }
+
+    [Fact]
+    public async Task CheckEligibilityAsync_ReturnsFailureForInactivePromotion()
+    {
+        var service = CreateService(
+            promotionRepository: new FakePromotionRepository
+            {
+                PromotionById = new Promotion { Id = 4, PromotionName = "Old Promo", IsActive = false }
+            });
+
+        var result = await service.CheckEligibilityAsync("CSA-4653", 4);
+
+        Assert.False(result.IsEligible);
+        Assert.Equal("This promotion is inactive.", result.Message);
+    }
+
+    [Fact]
     public async Task CheckEligibilityAsync_ReturnsExistingUsageWhenPromotionAlreadyUsed()
     {
         var vehicle = new Vehicle
@@ -63,6 +100,26 @@ public sealed class PromotionUsageServiceTests
     }
 
     [Fact]
+    public async Task SaveVehicleAndUsageAsync_ReturnsFailureWhenPromotionDoesNotExist()
+    {
+        var writer = new FakePromotionUsageTransactionalWriter();
+        var service = CreateService(
+            promotionRepository: new FakePromotionRepository(),
+            transactionalWriter: writer);
+
+        var result = await service.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
+        {
+            VehicleNumberRaw = "CSA-4653",
+            PhoneNumber = "0771234567",
+            PromotionId = 99
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Selected promotion was not found.", result.Message);
+        Assert.False(writer.SaveCalled);
+    }
+
+    [Fact]
     public async Task SaveVehicleAndUsageAsync_ReturnsValidationFailureForNegativeAmountPaid()
     {
         var writer = new FakePromotionUsageTransactionalWriter();
@@ -78,6 +135,50 @@ public sealed class PromotionUsageServiceTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Amount paid cannot be negative.", result.Message);
+        Assert.False(writer.SaveCalled);
+    }
+
+    [Fact]
+    public async Task SaveVehicleAndUsageAsync_ReturnsEligibilityFailureForExistingVehicle()
+    {
+        var existingVehicle = new Vehicle
+        {
+            Id = 5,
+            VehicleNumberRaw = "CSA-4653",
+            VehicleNumberNormalized = "CSA4653",
+            PhoneNumber = "0771234567"
+        };
+        var existingUsage = new PromotionUsage
+        {
+            Id = 20,
+            VehicleId = 5,
+            PromotionId = 5,
+            ServiceDate = new DateTime(2026, 4, 1)
+        };
+        var writer = new FakePromotionUsageTransactionalWriter();
+        var service = CreateService(
+            vehicleRepository: new FakeVehicleRepository { VehicleByNormalizedNumber = existingVehicle },
+            promotionRepository: new FakePromotionRepository
+            {
+                PromotionById = new Promotion { Id = 5, PromotionName = "Weekend Promo", IsActive = true }
+            },
+            promotionUsageRepository: new FakePromotionUsageRepository
+            {
+                UsageByVehicleAndPromotion = existingUsage
+            },
+            transactionalWriter: writer);
+
+        var result = await service.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
+        {
+            VehicleNumberRaw = "CSA-4653",
+            PhoneNumber = "0771234567",
+            PromotionId = 5
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Promotion already used for this vehicle.", result.Message);
+        Assert.Same(existingVehicle, result.Vehicle);
+        Assert.Same(existingUsage, result.PromotionUsage);
         Assert.False(writer.SaveCalled);
     }
 
@@ -113,6 +214,109 @@ public sealed class PromotionUsageServiceTests
         Assert.Null(writer.CapturedExistingVehicle);
         Assert.NotNull(writer.CapturedSaveRequest);
         Assert.Equal(new DateTime(2026, 4, 9), writer.CapturedSaveRequest!.ServiceDate);
+    }
+
+    [Fact]
+    public async Task SaveVehicleAndUsageAsync_PreservesExistingVehicleWhenWriterFails()
+    {
+        var existingVehicle = new Vehicle
+        {
+            Id = 5,
+            VehicleNumberRaw = "CSA-4653",
+            VehicleNumberNormalized = "CSA4653",
+            PhoneNumber = "0771234567"
+        };
+        var writer = new FakePromotionUsageTransactionalWriter
+        {
+            SaveResult = new SavePromotionUsageResult
+            {
+                IsSuccess = false,
+                Message = "Writer failed."
+            }
+        };
+        var service = CreateService(
+            vehicleRepository: new FakeVehicleRepository { VehicleByNormalizedNumber = existingVehicle },
+            promotionRepository: new FakePromotionRepository
+            {
+                PromotionById = new Promotion { Id = 5, PromotionName = "Weekend Promo", IsActive = true }
+            },
+            transactionalWriter: writer);
+
+        var result = await service.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
+        {
+            VehicleNumberRaw = "CSA-4653",
+            PhoneNumber = "0771234567",
+            PromotionId = 5
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Same(existingVehicle, result.Vehicle);
+        Assert.True(writer.SaveCalled);
+    }
+
+    [Fact]
+    public async Task UpdateUsageRecordAsync_ReturnsFailureWhenRequestIsInvalid()
+    {
+        var writer = new FakePromotionUsageTransactionalWriter();
+        var service = CreateService(transactionalWriter: writer);
+
+        var result = await service.UpdateUsageRecordAsync(new UpdatePromotionUsageRecordRequest
+        {
+            PromotionUsageId = 0,
+            PhoneNumber = "0771234567"
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Promotion usage id is required.", result.Message);
+        Assert.False(writer.UpdateCalled);
+    }
+
+    [Fact]
+    public async Task UpdateUsageRecordAsync_ReturnsFailureWhenUsageDoesNotExist()
+    {
+        var writer = new FakePromotionUsageTransactionalWriter();
+        var service = CreateService(
+            promotionUsageRepository: new FakePromotionUsageRepository(),
+            transactionalWriter: writer);
+
+        var result = await service.UpdateUsageRecordAsync(new UpdatePromotionUsageRecordRequest
+        {
+            PromotionUsageId = 40,
+            ServiceDate = new DateTime(2026, 4, 10),
+            PhoneNumber = "0711111111"
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Promotion usage record was not found.", result.Message);
+        Assert.False(writer.UpdateCalled);
+    }
+
+    [Fact]
+    public async Task UpdateUsageRecordAsync_ReturnsFailureWhenVehicleDoesNotExist()
+    {
+        var existingUsage = new PromotionUsage
+        {
+            Id = 40,
+            VehicleId = 8,
+            PromotionId = 2,
+            ServiceDate = new DateTime(2026, 4, 1)
+        };
+        var writer = new FakePromotionUsageTransactionalWriter();
+        var service = CreateService(
+            vehicleRepository: new FakeVehicleRepository(),
+            promotionUsageRepository: new FakePromotionUsageRepository { UsageById = existingUsage },
+            transactionalWriter: writer);
+
+        var result = await service.UpdateUsageRecordAsync(new UpdatePromotionUsageRecordRequest
+        {
+            PromotionUsageId = 40,
+            ServiceDate = new DateTime(2026, 4, 10),
+            PhoneNumber = "0711111111"
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Vehicle record was not found.", result.Message);
+        Assert.False(writer.UpdateCalled);
     }
 
     [Fact]
@@ -169,6 +373,34 @@ public sealed class PromotionUsageServiceTests
     }
 
     [Fact]
+    public async Task DeleteUsageAsync_RejectsMissingId()
+    {
+        var usageRepository = new FakePromotionUsageRepository();
+        var service = CreateService(promotionUsageRepository: usageRepository);
+
+        var result = await service.DeleteUsageAsync(0, "admin");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Promotion usage id is required.", result.Message);
+        Assert.Null(usageRepository.DeletedId);
+    }
+
+    [Fact]
+    public async Task DeleteUsageAsync_RejectsWhenSettingsAreMissing()
+    {
+        var usageRepository = new FakePromotionUsageRepository();
+        var service = CreateService(
+            promotionUsageRepository: usageRepository,
+            settingsRepository: new FakeSettingsRepository());
+
+        var result = await service.DeleteUsageAsync(10, "admin");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Delete password is not configured.", result.Message);
+        Assert.Null(usageRepository.DeletedId);
+    }
+
+    [Fact]
     public async Task DeleteUsageAsync_RejectsIncorrectPassword()
     {
         var usageRepository = new FakePromotionUsageRepository();
@@ -210,6 +442,109 @@ public sealed class PromotionUsageServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal("Record deleted successfully.", result.Message);
         Assert.Equal(10, usageRepository.DeletedId);
+    }
+
+    [Fact]
+    public async Task UpdateUsageAsync_ReturnsFailureWhenIdIsMissing()
+    {
+        var usageRepository = new FakePromotionUsageRepository();
+        var service = CreateService(promotionUsageRepository: usageRepository);
+
+        var result = await service.UpdateUsageAsync(new PromotionUsage
+        {
+            VehicleId = 1,
+            PromotionId = 2
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Promotion usage id is required.", result.Message);
+        Assert.Null(usageRepository.UpdatedUsage);
+    }
+
+    [Fact]
+    public async Task UpdateUsageAsync_ReturnsFailureWhenUsageDoesNotExist()
+    {
+        var usageRepository = new FakePromotionUsageRepository();
+        var service = CreateService(
+            promotionRepository: new FakePromotionRepository
+            {
+                PromotionById = new Promotion { Id = 2, PromotionName = "Weekend Promo", IsActive = true }
+            },
+            promotionUsageRepository: usageRepository);
+
+        var result = await service.UpdateUsageAsync(new PromotionUsage
+        {
+            Id = 12,
+            VehicleId = 1,
+            PromotionId = 2,
+            ServiceDate = new DateTime(2026, 4, 10)
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Promotion usage record was not found.", result.Message);
+    }
+
+    [Fact]
+    public async Task UpdateUsageAsync_ReturnsFailureWhenPromotionDoesNotExist()
+    {
+        var usageRepository = new FakePromotionUsageRepository
+        {
+            UsageById = new PromotionUsage
+            {
+                Id = 12,
+                VehicleId = 1,
+                PromotionId = 2,
+                ServiceDate = new DateTime(2026, 4, 9)
+            }
+        };
+        var service = CreateService(
+            promotionRepository: new FakePromotionRepository(),
+            promotionUsageRepository: usageRepository);
+
+        var result = await service.UpdateUsageAsync(new PromotionUsage
+        {
+            Id = 12,
+            VehicleId = 1,
+            PromotionId = 3,
+            ServiceDate = new DateTime(2026, 4, 10)
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Selected promotion was not found.", result.Message);
+        Assert.Null(usageRepository.UpdatedUsage);
+    }
+
+    [Fact]
+    public async Task UpdateUsageAsync_BlocksInactivePromotionWhenPairChanges()
+    {
+        var usageRepository = new FakePromotionUsageRepository
+        {
+            UsageById = new PromotionUsage
+            {
+                Id = 12,
+                VehicleId = 1,
+                PromotionId = 2,
+                ServiceDate = new DateTime(2026, 4, 9)
+            }
+        };
+        var service = CreateService(
+            promotionRepository: new FakePromotionRepository
+            {
+                PromotionById = new Promotion { Id = 3, PromotionName = "Old Promo", IsActive = false }
+            },
+            promotionUsageRepository: usageRepository);
+
+        var result = await service.UpdateUsageAsync(new PromotionUsage
+        {
+            Id = 12,
+            VehicleId = 1,
+            PromotionId = 3,
+            ServiceDate = new DateTime(2026, 4, 10)
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("This promotion is inactive.", result.Message);
+        Assert.Null(usageRepository.UpdatedUsage);
     }
 
     [Fact]

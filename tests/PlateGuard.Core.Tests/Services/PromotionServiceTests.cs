@@ -60,6 +60,57 @@ public sealed class PromotionServiceTests
         Assert.True(repository.UpdatedPromotion!.IsActive);
     }
 
+    [Fact]
+    public async Task DeactivateAsync_SetsIsActiveFalseAndPersistsUpdate()
+    {
+        var repository = new CapturingPromotionRepository
+        {
+            PromotionById = new Promotion
+            {
+                Id = 8,
+                PromotionName = "April Promo",
+                IsActive = true
+            }
+        };
+        var service = new PromotionService(repository);
+
+        var promotion = await service.DeactivateAsync(8);
+
+        Assert.False(promotion.IsActive);
+        Assert.NotNull(repository.UpdatedPromotion);
+        Assert.False(repository.UpdatedPromotion!.IsActive);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SetsUpdatedAt()
+    {
+        var repository = new CapturingPromotionRepository();
+        var service = new PromotionService(repository);
+        var promotion = new Promotion
+        {
+            Id = 10,
+            PromotionName = "Weekend Promo",
+            IsActive = true
+        };
+
+        var updated = await service.UpdateAsync(promotion);
+
+        Assert.Same(promotion, updated);
+        Assert.NotNull(updated.UpdatedAt);
+        Assert.Same(promotion, repository.UpdatedPromotion);
+    }
+
+    [Fact]
+    public async Task ActivateAsync_ThrowsWhenPromotionIsMissing()
+    {
+        var repository = new CapturingPromotionRepository();
+        var service = new PromotionService(repository);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.ActivateAsync(99));
+
+        Assert.Equal("Promotion with id 99 was not found.", exception.Message);
+    }
+
     private sealed class CapturingPromotionRepository : IPromotionRepository
     {
         public Promotion? PromotionById { get; set; }

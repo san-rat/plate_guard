@@ -102,6 +102,51 @@ public sealed class ExportServiceTests
         }
     }
 
+    [Fact]
+    public async Task ExportPromotionUsageRecordsAsync_PrefersRequestFolderOverSettingsFolder()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var requestFolder = Path.Combine(root, "request-folder");
+            var settingsFolder = Path.Combine(root, "settings-folder");
+            var service = new ExportService(new FakeSettingsRepository
+            {
+                Settings = new AppSettings
+                {
+                    Id = AppSettings.DefaultId,
+                    ExportFolder = settingsFolder
+                }
+            });
+
+            var result = await service.ExportPromotionUsageRecordsAsync(new ExportPromotionUsageRecordsRequest
+            {
+                ExportFolder = requestFolder,
+                FileNamePrefix = "custom-prefix",
+                Records =
+                [
+                    new PromotionUsageRecord
+                    {
+                        ServiceDate = new DateTime(2026, 4, 9),
+                        PromotionName = "Weekend Promo",
+                        VehicleNumberRaw = "CSA-4653",
+                        PhoneNumber = "0771234567"
+                    }
+                ]
+            });
+
+            Assert.True(result.IsSuccess);
+            Assert.NotNull(result.FilePath);
+            Assert.StartsWith(requestFolder, result.FilePath!, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("custom-prefix-", Path.GetFileName(result.FilePath));
+            Assert.False(Directory.Exists(settingsFolder));
+        }
+        finally
+        {
+            DeleteDirectoryIfExists(root);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "PlateGuard.Core.Tests", Guid.NewGuid().ToString("N"));

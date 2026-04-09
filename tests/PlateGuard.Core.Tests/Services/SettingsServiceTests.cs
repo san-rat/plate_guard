@@ -21,6 +21,23 @@ public sealed class SettingsServiceTests
     }
 
     [Fact]
+    public async Task GetAsync_ReturnsExistingSettingsWithoutCreatingNewRow()
+    {
+        var repository = new InMemorySettingsRepository(new AppSettings
+        {
+            Id = AppSettings.DefaultId,
+            DeletePasswordHash = DeletePasswordHasher.Hash("admin"),
+            ShopName = "Existing Shop"
+        });
+        var service = new SettingsService(repository);
+
+        var settings = await service.GetAsync();
+
+        Assert.Equal("Existing Shop", settings.ShopName);
+        Assert.Equal(0, repository.UpsertCallCount);
+    }
+
+    [Fact]
     public async Task UpdateAsync_RejectsRelativeExportFolder()
     {
         var repository = new InMemorySettingsRepository(new AppSettings
@@ -44,6 +61,29 @@ public sealed class SettingsServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_TrimsAndPersistsShopNameAndExportFolder()
+    {
+        var repository = new InMemorySettingsRepository(new AppSettings
+        {
+            Id = AppSettings.DefaultId,
+            DeletePasswordHash = DeletePasswordHasher.Hash("admin")
+        });
+        var service = new SettingsService(repository);
+        var exportFolder = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "PlateGuard.Settings.Tests"));
+
+        var result = await service.UpdateAsync(new UpdateAppSettingsRequest
+        {
+            ShopName = " Test Shop ",
+            ExportFolder = $"  {exportFolder}  "
+        });
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Test Shop", repository.CurrentSettings!.ShopName);
+        Assert.Equal(exportFolder, repository.CurrentSettings.ExportFolder);
+        Assert.Equal(1, repository.UpsertCallCount);
+    }
+
+    [Fact]
     public async Task ChangeDeletePasswordAsync_UpdatesHashWhenCurrentPasswordMatches()
     {
         var repository = new InMemorySettingsRepository(new AppSettings
@@ -63,6 +103,28 @@ public sealed class SettingsServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(1, repository.UpsertCallCount);
         Assert.True(DeletePasswordHasher.Verify("new-secret", repository.CurrentSettings!.DeletePasswordHash));
+    }
+
+    [Fact]
+    public async Task ChangeDeletePasswordAsync_RejectsWhenConfirmationDoesNotMatch()
+    {
+        var repository = new InMemorySettingsRepository(new AppSettings
+        {
+            Id = AppSettings.DefaultId,
+            DeletePasswordHash = DeletePasswordHasher.Hash("admin")
+        });
+        var service = new SettingsService(repository);
+
+        var result = await service.ChangeDeletePasswordAsync(new ChangeDeletePasswordRequest
+        {
+            CurrentPassword = "admin",
+            NewPassword = "new-secret",
+            ConfirmNewPassword = "different"
+        });
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("New delete password confirmation does not match.", result.Message);
+        Assert.Equal(0, repository.UpsertCallCount);
     }
 
     [Fact]
