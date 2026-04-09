@@ -53,6 +53,7 @@
 
         <Style Selector="ComboBox">
             <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="4"/>
@@ -163,6 +164,11 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
+        <Style Selector="Button">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+
         <Style Selector="Button.nav">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -201,7 +207,10 @@
         </Style>
 
         <Style Selector="Button.primary:disabled">
-            <Setter Property="Opacity" Value="0.65"/>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
         </Style>
 
         <Style Selector="Button.secondary">
@@ -216,17 +225,25 @@
         </Style>
 
         <Style Selector="Button.secondary:disabled">
-            <Setter Property="Opacity" Value="0.55"/>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Background" Value="#F8FAFD"/>
+            <Setter Property="Foreground" Value="#CBD5E1"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
         </Style>
 
         <Style Selector="Button.danger">
             <Setter Property="MinHeight" Value="42"/>
-            <Setter Property="Background" Value="{StaticResource BrushDangerSurface}"/>
-            <Setter Property="Foreground" Value="{StaticResource BrushDangerButton}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BrushDangerBorder}"/>
+            <Setter Property="Background" Value="#DC2626"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#DC2626"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="16,0"/>
+        </Style>
+
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="#B91C1C"/>
+            <Setter Property="BorderBrush" Value="#B91C1C"/>
         </Style>
 
         <Style Selector="Border.searchHeroInputHost">

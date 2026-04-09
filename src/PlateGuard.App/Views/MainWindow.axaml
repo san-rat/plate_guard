@@ -167,8 +167,6 @@
                               ColumnSpacing="10"
                               RowDefinitions="Auto,Auto">
                             <StackPanel Spacing="6">
-                                <TextBlock Text="{Binding SearchModeLabel}"
-                                           Classes="eyebrow"/>
                                 <Border Classes="searchHeroInputHost">
                                     <Grid>
                                         <TextBox x:Name="SearchInputTextBox"
@@ -706,12 +704,14 @@
                             </ComboBox>
                             <TextBox Grid.Column="2"
                                      VerticalAlignment="Center"
-                                     Width="122"
+                                     Padding="12,0"
+                                     Width="132"
                                      Text="{Binding HistoryDateFromText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="From yyyy-MM-dd"/>
                             <TextBox Grid.Column="3"
                                      VerticalAlignment="Center"
-                                     Width="122"
+                                     Padding="12,0"
+                                     Width="132"
                                      Text="{Binding HistoryDateToText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="To yyyy-MM-dd"/>
                             <Button Grid.Column="4"
