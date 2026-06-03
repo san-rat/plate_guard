@@ -7,7 +7,7 @@
     <Application.Resources>
         <SolidColorBrush x:Key="BrushPageBackground" Color="#F5F7FA"/>
         <SolidColorBrush x:Key="BrushSurface" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="BrushSoftSurface" Color="#F8FAFD"/>
+        <SolidColorBrush x:Key="BrushSoftSurface" Color="#E8EDF5"/>
         <SolidColorBrush x:Key="BrushAccentSurface" Color="#EEF4FF"/>
         <SolidColorBrush x:Key="BrushAccentBorder" Color="#C8D8FF"/>
         <SolidColorBrush x:Key="BrushBorder" Color="#D7DEE8"/>
@@ -120,7 +120,7 @@
         </Style>
 
         <Style Selector="TextBlock.label">
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Foreground" Value="#94A3B8"/>
             <Setter Property="LetterSpacing" Value="1"/>
@@ -199,6 +199,12 @@
             <Setter Property="Padding" Value="18,0"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
         </Style>
 
         <Style Selector="Button.primary:pointerover">
@@ -222,6 +228,11 @@
             <Setter Property="Padding" Value="16,0"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
         </Style>
 
         <Style Selector="Button.secondary:disabled">
