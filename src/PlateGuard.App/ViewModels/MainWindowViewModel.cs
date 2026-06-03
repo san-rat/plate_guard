@@ -229,6 +229,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool hasNoHistoryRecords = true;
 
     [ObservableProperty]
+    private bool canRegisterNewVehicle;
+
+    [ObservableProperty]
     private string selectedHistoryVehicleNumber = "No record selected";
 
     [ObservableProperty]
@@ -686,13 +689,22 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         var prefilledVehicleNumber = string.Empty;
+        var prefilledPhoneNumber = string.Empty;
+        var prefilledOwnerName = string.Empty;
+
         if (SelectedVehicle is not null)
         {
             prefilledVehicleNumber = SelectedVehicle.VehicleNumberRaw;
         }
-        else if (!string.IsNullOrWhiteSpace(SearchText) && DetectSearchMode(SearchText) == SearchMode.VehicleNumber)
+        else if (!string.IsNullOrWhiteSpace(SearchText))
         {
-            prefilledVehicleNumber = SearchText.Trim();
+            var searchMode = DetectSearchMode(SearchText);
+            if (searchMode == SearchMode.VehicleNumber)
+                prefilledVehicleNumber = SearchText.Trim();
+            else if (searchMode == SearchMode.PhoneNumber)
+                prefilledPhoneNumber = SearchText.Trim();
+            else
+                prefilledOwnerName = SearchText.Trim();
         }
 
         AddUsageRequested?.Invoke(new AddUsageDialogRequest
@@ -700,7 +712,28 @@ public partial class MainWindowViewModel : ViewModelBase
             Vehicle = SelectedVehicle,
             SelectedPromotion = SelectedPromotion,
             AvailablePromotions = ActivePromotions.ToList(),
-            PrefilledVehicleNumber = prefilledVehicleNumber
+            PrefilledVehicleNumber = prefilledVehicleNumber,
+            PrefilledPhoneNumber = prefilledPhoneNumber,
+            PrefilledOwnerName = prefilledOwnerName
+        });
+    }
+
+    [RelayCommand]
+    private void RegisterNewVehicleForOwner()
+    {
+        if (!CanRegisterNewVehicle || SelectedPromotion is null || SelectedVehicle is null)
+        {
+            return;
+        }
+
+        AddUsageRequested?.Invoke(new AddUsageDialogRequest
+        {
+            Vehicle = null,
+            SelectedPromotion = SelectedPromotion,
+            AvailablePromotions = ActivePromotions.ToList(),
+            PrefilledVehicleNumber = string.Empty,
+            PrefilledPhoneNumber = SelectedVehicle.PhoneNumber,
+            PrefilledOwnerName = SelectedVehicle.OwnerName ?? string.Empty
         });
     }
 
@@ -859,7 +892,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private async Task ExecuteSearchAsync(string rawQuery, CancellationToken cancellationToken)
+    private async Task ExecuteSearchAsync(string rawQuery, CancellationToken cancellationToken, SearchMode? forceMode = null)
     {
         if (_vehicleService is null)
         {
@@ -876,7 +909,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            var searchMode = DetectSearchMode(query);
+            var searchMode = forceMode ?? DetectSearchMode(query);
             SearchModeLabel = searchMode switch
             {
                 SearchMode.VehicleNumber => "Searching by vehicle number",
@@ -972,6 +1005,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             SelectedVehicleHistory.Clear();
+            CanRegisterNewVehicle = false;
 
             if (SelectedVehicle is null)
             {
@@ -1019,6 +1053,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 eligibility.Message,
                 eligibility.IsEligible,
                 eligibility.IsEligible ? EligibilityDisplayTone.Positive : EligibilityDisplayTone.Negative);
+
+            CanRegisterNewVehicle = true;
         }
         catch (Exception exception)
         {
@@ -1032,6 +1068,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "Review the database state and try again.",
                 canAddUsage: false,
                 EligibilityDisplayTone.Warning);
+            CanRegisterNewVehicle = false;
             StatusMessage = $"Could not refresh selection details: {exception.Message}";
         }
     }
@@ -1062,7 +1099,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SearchText = query;
         _suppressSearchTextChanged = false;
 
-        await ExecuteSearchAsync(query, CancellationToken.None);
+        await ExecuteSearchAsync(query, CancellationToken.None, SearchMode.VehicleNumber);
 
         SelectedVehicle = SearchResults.FirstOrDefault(vehicle => vehicle.Id == result.Vehicle.Id)
             ?? SearchResults.FirstOrDefault();
@@ -1106,6 +1143,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedVehicleHistory.Clear();
         HasHistory = false;
         HasNoHistory = true;
+        CanRegisterNewVehicle = false;
         SearchModeLabel = "Search by vehicle number, phone number, or owner name";
         ResultsSummary = "Search results will appear here.";
         EmptyStateTitle = "Search to begin";
@@ -1436,20 +1474,9 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        var searchMode = DetectSearchMode(SearchText);
-        if (searchMode != SearchMode.VehicleNumber)
-        {
-            SetEligibilityState(
-                "Search by vehicle number to add a new vehicle",
-                "Phone and owner searches are for finding existing vehicles. Use a vehicle number search to create a new vehicle usage record.",
-                canAddUsage: false,
-                EligibilityDisplayTone.Neutral);
-            return;
-        }
-
         SetEligibilityState(
             "New vehicle can be added for this promotion",
-            "No existing vehicle matched this vehicle number. Use Add Usage to create the vehicle record and save the promotion usage.",
+            "No existing vehicle matched this search. Use Add Usage to register a new vehicle record.",
             canAddUsage: true,
             EligibilityDisplayTone.Positive);
     }
@@ -1519,7 +1546,10 @@ public partial class MainWindowViewModel : ViewModelBase
             return SearchMode.VehicleNumber;
         }
 
-        if (phoneLike && digitCount > 0)
+        // Require at least 7 digits to treat as a phone number.
+        // Older Sri Lankan plate numbers are all-numeric but short (≤ 5 digits);
+        // phone numbers are 7–10 digits, so this threshold separates the two.
+        if (phoneLike && digitCount >= 7)
         {
             return SearchMode.PhoneNumber;
         }

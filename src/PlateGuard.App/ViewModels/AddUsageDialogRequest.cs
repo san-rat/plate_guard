@@ -10,4 +10,6 @@ public sealed class AddUsageDialogRequest
     public Promotion? SelectedPromotion { get; init; }
     public IReadOnlyList<Promotion> AvailablePromotions { get; init; } = Array.Empty<Promotion>();
     public string PrefilledVehicleNumber { get; init; } = string.Empty;
+    public string PrefilledPhoneNumber { get; init; } = string.Empty;
+    public string PrefilledOwnerName { get; init; } = string.Empty;
 }

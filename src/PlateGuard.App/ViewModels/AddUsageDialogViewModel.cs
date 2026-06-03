@@ -127,6 +127,8 @@ public partial class AddUsageDialogViewModel : ViewModelBase
             EntryModeTitle = "New vehicle";
             EntryModeMessage = "No existing vehicle matched. Enter the required fields and save the new usage.";
             VehicleNumberRaw = request.PrefilledVehicleNumber;
+            PhoneNumber = request.PrefilledPhoneNumber;
+            OwnerName = request.PrefilledOwnerName;
         }
 
         UpdateNormalizedVehicleNumber(VehicleNumberRaw);
