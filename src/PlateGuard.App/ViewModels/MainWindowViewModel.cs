@@ -1045,6 +1045,17 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
 
+            if (!SelectedPromotion.IsActive)
+            {
+                SetEligibilityState(
+                    "Selected promotion is inactive",
+                    "Activate the promotion before recording a new usage.",
+                    canAddUsage: false,
+                    EligibilityDisplayTone.Warning);
+                CanRegisterNewVehicle = true;
+                return;
+            }
+
             var eligibility = await _promotionUsageService.CheckEligibilityAsync(SelectedVehicle.Id, SelectedPromotion.Id);
             SetEligibilityState(
                 eligibility.IsEligible
