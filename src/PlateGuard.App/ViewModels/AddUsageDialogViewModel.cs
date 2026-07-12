@@ -17,6 +17,7 @@ public partial class AddUsageDialogViewModel : ViewModelBase
     private readonly IPromotionUsageService? _promotionUsageService;
     private readonly IVehicleService? _vehicleService;
     private CancellationTokenSource? _ownerSuggestionDebounceCts;
+    private CancellationTokenSource? _eligibilityDebounceCts;
     private bool _suppressOwnerSuggestionSearch;
 
     public ObservableCollection<Promotion> AvailablePromotions { get; } = [];
@@ -39,6 +40,24 @@ public partial class AddUsageDialogViewModel : ViewModelBase
 
     [ObservableProperty]
     private Promotion? selectedPromotion;
+
+    [ObservableProperty]
+    private DateTimeOffset? serviceDate = DateTimeOffset.Now;
+
+    [ObservableProperty]
+    private string eligibilityHint = "Choose a promotion and enter a vehicle number to preview eligibility.";
+
+    [ObservableProperty]
+    private EligibilityHintTone eligibilityHintTone;
+
+    [ObservableProperty]
+    private bool isEligibilityHintPositive;
+
+    [ObservableProperty]
+    private bool isEligibilityHintNegative;
+
+    [ObservableProperty]
+    private bool isEligibilityHintWarning;
 
     [ObservableProperty]
     private string phoneNumber = string.Empty;
@@ -153,6 +172,23 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         UpdateNormalizedVehicleNumber(value);
     }
 
+    partial void OnNormalizedVehicleNumberChanged(string value)
+    {
+        _ = DebouncedUpdateEligibilityHintAsync();
+    }
+
+    partial void OnSelectedPromotionChanged(Promotion? value)
+    {
+        _ = DebouncedUpdateEligibilityHintAsync();
+    }
+
+    partial void OnEligibilityHintToneChanged(EligibilityHintTone value)
+    {
+        IsEligibilityHintPositive = value == EligibilityHintTone.Positive;
+        IsEligibilityHintNegative = value == EligibilityHintTone.Negative;
+        IsEligibilityHintWarning = value == EligibilityHintTone.Warning;
+    }
+
     partial void OnOwnerNameChanged(string value)
     {
         if (_suppressOwnerSuggestionSearch)
@@ -247,7 +283,7 @@ public partial class AddUsageDialogViewModel : ViewModelBase
                 DiscountedPrice = ParseNullableDecimal(DiscountedPriceText),
                 AmountPaid = ParseNullableDecimal(AmountPaidText),
                 Notes = NormalizeOptionalText(Notes),
-                ServiceDate = DateTime.Today
+                ServiceDate = ServiceDate?.Date ?? DateTime.Today
             };
 
             LastSaveResult = await _promotionUsageService.SaveVehicleAndUsageAsync(saveRequest);
@@ -289,6 +325,11 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         if (SelectedPromotion is null)
         {
             return "Promotion is required.";
+        }
+
+        if (ServiceDate is null)
+        {
+            return "Service date is required.";
         }
 
         if (string.IsNullOrWhiteSpace(PhoneNumber))
@@ -400,6 +441,59 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         }
     }
 
+    private async Task DebouncedUpdateEligibilityHintAsync()
+    {
+        _eligibilityDebounceCts?.Cancel();
+        _eligibilityDebounceCts?.Dispose();
+        _eligibilityDebounceCts = new CancellationTokenSource();
+        var cancellationToken = _eligibilityDebounceCts.Token;
+
+        if (_promotionUsageService is null ||
+            SelectedPromotion is null ||
+            string.IsNullOrWhiteSpace(NormalizedVehicleNumber) ||
+            NormalizedVehicleNumber == "-")
+        {
+            EligibilityHint = "Choose a promotion and enter a vehicle number to preview eligibility.";
+            EligibilityHintTone = EligibilityHintTone.Neutral;
+            return;
+        }
+
+        try
+        {
+            await Task.Delay(300, cancellationToken);
+            var result = await _promotionUsageService.CheckEligibilityAsync(
+                NormalizedVehicleNumber,
+                SelectedPromotion.Id,
+                cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (result.IsEligible)
+            {
+                EligibilityHint = "Eligible — this vehicle can use this promotion.";
+                EligibilityHintTone = EligibilityHintTone.Positive;
+                return;
+            }
+
+            EligibilityHint = result.Message;
+            EligibilityHintTone = result.Message.Contains("inactive", StringComparison.OrdinalIgnoreCase)
+                ? EligibilityHintTone.Warning
+                : EligibilityHintTone.Negative;
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer eligibility preview replaced this one.
+        }
+        catch (Exception exception)
+        {
+            EligibilityHint = $"Eligibility preview unavailable: {exception.Message}";
+            EligibilityHintTone = EligibilityHintTone.Warning;
+        }
+    }
+
     private void ClearOwnerSuggestions()
     {
         OwnerSuggestions.Clear();
@@ -459,4 +553,12 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         parsedValue = null;
         return false;
     }
+}
+
+public enum EligibilityHintTone
+{
+    Neutral,
+    Positive,
+    Negative,
+    Warning
 }

@@ -22,7 +22,7 @@ public partial class EditUsageDialogViewModel : ViewModelBase
     private string promotionName = "-";
 
     [ObservableProperty]
-    private string serviceDateText = string.Empty;
+    private DateTimeOffset? serviceDate;
 
     [ObservableProperty]
     private string phoneNumber = string.Empty;
@@ -61,7 +61,7 @@ public partial class EditUsageDialogViewModel : ViewModelBase
     {
         VehicleNumberDisplay = "CAB-1234";
         PromotionName = "Sample Promotion";
-        ServiceDateText = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        ServiceDate = DateTimeOffset.Now;
         PhoneNumber = "0771234567";
         OwnerName = "Nimal Perera";
         Brand = "Toyota";
@@ -81,7 +81,7 @@ public partial class EditUsageDialogViewModel : ViewModelBase
             ? request.Record.VehicleNumberNormalized
             : request.Record.VehicleNumberRaw;
         PromotionName = request.Record.PromotionName;
-        ServiceDateText = request.Record.ServiceDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        ServiceDate = new DateTimeOffset(request.Record.ServiceDate);
         PhoneNumber = request.Record.PhoneNumber;
         OwnerName = request.Record.OwnerName ?? string.Empty;
         Brand = request.Record.Brand ?? string.Empty;
@@ -159,10 +159,12 @@ public partial class EditUsageDialogViewModel : ViewModelBase
             return "Phone number is required.";
         }
 
-        if (!TryParseRequiredDate(ServiceDateText, out serviceDate))
+        if (ServiceDate is null)
         {
-            return "Service date must be a valid date in yyyy-MM-dd format.";
+            return "Service date is required.";
         }
+
+        serviceDate = ServiceDate.Value.Date;
 
         if (!TryParseNullableInt(MileageText, out var mileage))
         {
@@ -205,12 +207,6 @@ public partial class EditUsageDialogViewModel : ViewModelBase
         }
 
         return null;
-    }
-
-    private static bool TryParseRequiredDate(string value, out DateTime serviceDate)
-    {
-        return DateTime.TryParseExact(value.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out serviceDate)
-               || DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out serviceDate);
     }
 
     private static string? NormalizeOptionalText(string value)

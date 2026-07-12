@@ -42,7 +42,7 @@
 
                         <Grid ColumnDefinitions="*,*"
                               ColumnSpacing="16"
-                              RowDefinitions="Auto,Auto,Auto,Auto">
+                              RowDefinitions="Auto,Auto,Auto,Auto,Auto">
                             <StackPanel Spacing="6">
                                 <TextBlock Text="Vehicle Number *"
                                            Classes="label"/>
@@ -73,6 +73,15 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
+                                <Border Classes="statusBanner"
+                                        Classes.success="{Binding IsEligibilityHintPositive}"
+                                        Classes.negative="{Binding IsEligibilityHintNegative}"
+                                        Classes.warning="{Binding IsEligibilityHintWarning}"
+                                        Padding="10,8">
+                                    <TextBlock Text="{Binding EligibilityHint}"
+                                               Classes="muted"
+                                               TextWrapping="Wrap"/>
+                                </Border>
                             </StackPanel>
 
                             <StackPanel Grid.Row="1"
@@ -165,6 +174,14 @@
                                 <TextBlock Text="Model"
                                            Classes="label"/>
                                 <TextBox Text="{Binding Model, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="3"
+                                        Grid.Column="1"
+                                        Spacing="6">
+                                <TextBlock Text="Service Date *"
+                                           Classes="label"/>
+                                <DatePicker SelectedDate="{Binding ServiceDate, Mode=TwoWay}"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>

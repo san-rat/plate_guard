@@ -75,6 +75,92 @@ public sealed class MainWindowViewModelIntegrationTests
     }
 
     [Fact]
+    public async Task SearchModeSelector_ForcesShortPhoneSearchWhileAutoPreservesHeuristic()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var promotionService = app.GetRequiredService<IPromotionService>();
+        var promotionUsageService = app.GetRequiredService<IPromotionUsageService>();
+
+        var promotion = await promotionService.CreateAsync(new Promotion
+        {
+            PromotionName = "Forced Phone Promo",
+            IsActive = true
+        });
+
+        await promotionUsageService.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
+        {
+            VehicleNumberRaw = "PHN-4321",
+            PhoneNumber = "0771234567",
+            OwnerName = "Phone Search Owner",
+            PromotionId = promotion.Id
+        });
+
+        var viewModel = new MainWindowViewModel(
+            app.GetRequiredService<IVehicleService>(),
+            app.GetRequiredService<IPromotionService>(),
+            app.GetRequiredService<IPromotionUsageService>(),
+            app.GetRequiredService<ISettingsService>(),
+            app.GetRequiredService<IExportService>());
+
+        await TestWait.UntilAsync(
+            () => viewModel.ActivePromotions.Count > 0 && viewModel.SelectedPromotion is not null,
+            "Main window view model did not load active promotions.");
+
+        viewModel.SelectedSearchModeOption = viewModel.SearchModeOptions.Single(option => option.Mode == SearchMode.PhoneNumber);
+        viewModel.SearchText = "1234";
+
+        await TestWait.UntilAsync(
+            () => viewModel.SearchModeLabel == "Searching by phone number" && viewModel.HasSearchResults,
+            "Forced phone search did not find a short phone fragment.");
+
+        Assert.Equal("PHN-4321", viewModel.SelectedVehicle?.VehicleNumberRaw);
+
+        viewModel.SelectedSearchModeOption = viewModel.SearchModeOptions.Single(option => option.Mode == SearchMode.Auto);
+
+        await TestWait.UntilAsync(
+            () => viewModel.SearchModeLabel == "Searching by owner name" && viewModel.HasNoSearchResults,
+            "Auto mode did not preserve the existing short numeric owner-name heuristic.");
+
+        Assert.True(viewModel.CanAddUsage);
+    }
+
+    [Fact]
+    public async Task SettingsCommands_RaiseNotificationEventsForSuccessAndError()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var viewModel = new MainWindowViewModel(
+            app.GetRequiredService<IVehicleService>(),
+            app.GetRequiredService<IPromotionService>(),
+            app.GetRequiredService<IPromotionUsageService>(),
+            app.GetRequiredService<ISettingsService>(),
+            app.GetRequiredService<IExportService>());
+
+        await TestWait.UntilAsync(
+            () => viewModel.SettingsStatusMessage == "Settings loaded.",
+            "Main window view model did not load settings.");
+
+        var notifications = new List<(string Message, bool IsError)>();
+        viewModel.NotificationRequested += notification => notifications.Add(notification);
+
+        viewModel.SettingsShopName = "Notify Shop";
+        viewModel.SettingsExportFolder = Path.GetFullPath(Path.Combine(app.RootDirectory, "exports"));
+
+        await viewModel.SaveSettingsCommand.ExecuteAsync(null);
+
+        Assert.Contains(notifications, notification =>
+            notification.Message == "Settings saved successfully." && !notification.IsError);
+
+        viewModel.SettingsExportFolder = "relative\\exports";
+
+        await viewModel.SaveSettingsCommand.ExecuteAsync(null);
+
+        Assert.Contains(notifications, notification =>
+            notification.Message == "Export folder must be a full folder path." && notification.IsError);
+    }
+
+    [Fact]
     public async Task SelectedVehicle_WithActivePromotion_EnablesRegisterNewVehicle()
     {
         await using var app = await IntegrationTestApp.CreateAsync();

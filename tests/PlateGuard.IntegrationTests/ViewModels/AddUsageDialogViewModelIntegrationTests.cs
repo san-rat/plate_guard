@@ -78,4 +78,92 @@ public sealed class AddUsageDialogViewModelIntegrationTests
         Assert.Equal("Fit", viewModel.Model);
         Assert.Equal("CAD1002", viewModel.NormalizedVehicleNumber);
     }
+
+    [Fact]
+    public async Task EligibilityHint_ReportsDuplicateAndFreshVehicleStates()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var promotionService = app.GetRequiredService<IPromotionService>();
+        var promotionUsageService = app.GetRequiredService<IPromotionUsageService>();
+        var vehicleService = app.GetRequiredService<IVehicleService>();
+
+        var promotion = await promotionService.CreateAsync(new Promotion
+        {
+            PromotionName = "Eligibility Promo",
+            IsActive = true
+        });
+
+        await promotionUsageService.SaveVehicleAndUsageAsync(new SavePromotionUsageRequest
+        {
+            VehicleNumberRaw = "CAB-2001",
+            PhoneNumber = "0772002001",
+            OwnerName = "Eligibility Owner",
+            PromotionId = promotion.Id
+        });
+
+        var viewModel = new AddUsageDialogViewModel(
+            promotionUsageService,
+            vehicleService,
+            new AddUsageDialogRequest
+            {
+                SelectedPromotion = promotion,
+                AvailablePromotions = [promotion]
+            });
+
+        viewModel.VehicleNumberRaw = "CAB-2001";
+
+        await TestWait.UntilAsync(
+            () => viewModel.IsEligibilityHintNegative,
+            "Eligibility hint did not report duplicate usage.");
+
+        Assert.Equal("Promotion already used for this vehicle.", viewModel.EligibilityHint);
+
+        viewModel.VehicleNumberRaw = "CAB-2002";
+
+        await TestWait.UntilAsync(
+            () => viewModel.IsEligibilityHintPositive,
+            "Eligibility hint did not report a fresh vehicle as eligible.");
+
+        Assert.Equal("Eligible — this vehicle can use this promotion.", viewModel.EligibilityHint);
+    }
+
+    [Fact]
+    public async Task ServiceDate_DefaultsToTodayAndChosenDateIsSaved()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var promotionService = app.GetRequiredService<IPromotionService>();
+        var promotionUsageService = app.GetRequiredService<IPromotionUsageService>();
+        var vehicleService = app.GetRequiredService<IVehicleService>();
+
+        var promotion = await promotionService.CreateAsync(new Promotion
+        {
+            PromotionName = "Date Promo",
+            IsActive = true
+        });
+
+        var viewModel = new AddUsageDialogViewModel(
+            promotionUsageService,
+            vehicleService,
+            new AddUsageDialogRequest
+            {
+                SelectedPromotion = promotion,
+                AvailablePromotions = [promotion]
+            });
+
+        Assert.Equal(DateTimeOffset.Now.Date, viewModel.ServiceDate!.Value.Date);
+
+        viewModel.VehicleNumberRaw = "CAB-3001";
+        viewModel.PhoneNumber = "0773003001";
+        viewModel.ServiceDate = new DateTimeOffset(2026, 5, 12, 15, 30, 0, TimeSpan.Zero);
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.LastSaveResult?.IsSuccess);
+
+        var records = await promotionUsageService.SearchUsageRecordsAsync(new PromotionUsageRecordQuery());
+        var savedRecord = Assert.Single(records);
+        Assert.Equal(new DateTime(2026, 5, 12), savedRecord.ServiceDate);
+    }
 }
