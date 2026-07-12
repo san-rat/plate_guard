@@ -6,6 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         x:Class="PlateGuard.App.Views.AddUsageWindow"
+        x:Name="Root"
         x:DataType="vm:AddUsageDialogViewModel"
         d:DesignWidth="840"
         d:DesignHeight="700"
@@ -87,6 +88,68 @@
                                 <TextBlock Text="Owner Name"
                                            Classes="label"/>
                                 <TextBox Text="{Binding OwnerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Popup IsOpen="{Binding IsOwnerSuggestionsOpen, Mode=TwoWay}"
+                                       Placement="Bottom"
+                                       IsLightDismissEnabled="True">
+                                    <Border Classes="surfaceCard"
+                                            Padding="8"
+                                            Width="360"
+                                            MaxHeight="240">
+                                        <ScrollViewer>
+                                            <ItemsControl ItemsSource="{Binding OwnerSuggestions}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:OwnerSuggestion">
+                                                        <Button Classes="secondary"
+                                                                HorizontalAlignment="Stretch"
+                                                                HorizontalContentAlignment="Stretch"
+                                                                Command="{Binding #Root.DataContext.ApplyOwnerSuggestionCommand}"
+                                                                CommandParameter="{Binding}">
+                                                            <Grid ColumnDefinitions="*,Auto"
+                                                                  ColumnSpacing="12">
+                                                                <StackPanel Spacing="2">
+                                                                    <TextBlock Text="{Binding OwnerName}"
+                                                                               FontWeight="SemiBold"/>
+                                                                    <TextBlock Text="{Binding PhoneNumber}"
+                                                                               Classes="muted"/>
+                                                                </StackPanel>
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding Vehicles.Count, StringFormat={}{0} car(s)}"
+                                                                           Classes="subtle"
+                                                                           VerticalAlignment="Center"/>
+                                                            </Grid>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                                <ItemsControl ItemsSource="{Binding ReusableVehicles}"
+                                              IsVisible="{Binding HasReusableVehicles}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="core:Vehicle">
+                                            <Button Classes="secondary"
+                                                    Margin="0,0,8,8"
+                                                    Command="{Binding #Root.DataContext.ReuseVehicleCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Orientation="Horizontal"
+                                                            Spacing="6">
+                                                    <TextBlock Text="{Binding VehicleNumberRaw}"
+                                                               FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Brand}"
+                                                               Classes="muted"/>
+                                                    <TextBlock Text="{Binding Model}"
+                                                               Classes="muted"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
 
                             <StackPanel Grid.Row="2"

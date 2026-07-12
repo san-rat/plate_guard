@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,8 +15,13 @@ namespace PlateGuard.App.ViewModels;
 public partial class AddUsageDialogViewModel : ViewModelBase
 {
     private readonly IPromotionUsageService? _promotionUsageService;
+    private readonly IVehicleService? _vehicleService;
+    private CancellationTokenSource? _ownerSuggestionDebounceCts;
+    private bool _suppressOwnerSuggestionSearch;
 
     public ObservableCollection<Promotion> AvailablePromotions { get; } = [];
+    public ObservableCollection<OwnerSuggestion> OwnerSuggestions { get; } = [];
+    public ObservableCollection<Vehicle> ReusableVehicles { get; } = [];
 
     public event Action<bool>? CloseRequested;
 
@@ -39,6 +45,12 @@ public partial class AddUsageDialogViewModel : ViewModelBase
 
     [ObservableProperty]
     private string ownerName = string.Empty;
+
+    [ObservableProperty]
+    private bool isOwnerSuggestionsOpen;
+
+    [ObservableProperty]
+    private bool hasReusableVehicles;
 
     [ObservableProperty]
     private string brand = string.Empty;
@@ -96,9 +108,11 @@ public partial class AddUsageDialogViewModel : ViewModelBase
 
     public AddUsageDialogViewModel(
         IPromotionUsageService promotionUsageService,
+        IVehicleService? vehicleService,
         AddUsageDialogRequest request)
     {
         _promotionUsageService = promotionUsageService;
+        _vehicleService = vehicleService;
 
         foreach (var promotion in request.AvailablePromotions.OrderBy(promotion => promotion.PromotionName))
         {
@@ -139,9 +153,66 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         UpdateNormalizedVehicleNumber(value);
     }
 
+    partial void OnOwnerNameChanged(string value)
+    {
+        if (_suppressOwnerSuggestionSearch)
+        {
+            return;
+        }
+
+        _ = DebouncedLoadOwnerSuggestionsAsync(value);
+    }
+
     partial void OnIsExistingVehicleChanged(bool value)
     {
         OnPropertyChanged(nameof(CanEditVehicleNumber));
+
+        if (value)
+        {
+            ClearOwnerSuggestions();
+        }
+    }
+
+    [RelayCommand]
+    private void ApplyOwnerSuggestion(OwnerSuggestion? suggestion)
+    {
+        if (suggestion is null)
+        {
+            return;
+        }
+
+        _ownerSuggestionDebounceCts?.Cancel();
+        _suppressOwnerSuggestionSearch = true;
+        OwnerName = suggestion.OwnerName;
+        _suppressOwnerSuggestionSearch = false;
+
+        if (string.IsNullOrWhiteSpace(PhoneNumber))
+        {
+            PhoneNumber = suggestion.PhoneNumber;
+        }
+
+        ReusableVehicles.Clear();
+        foreach (var vehicle in suggestion.Vehicles)
+        {
+            ReusableVehicles.Add(vehicle);
+        }
+
+        HasReusableVehicles = ReusableVehicles.Count > 0;
+        IsOwnerSuggestionsOpen = false;
+    }
+
+    [RelayCommand]
+    private void ReuseVehicle(Vehicle? vehicle)
+    {
+        if (vehicle is null)
+        {
+            return;
+        }
+
+        VehicleNumberRaw = vehicle.VehicleNumberRaw;
+        Brand = vehicle.Brand ?? string.Empty;
+        Model = vehicle.Model ?? string.Empty;
+        UpdateNormalizedVehicleNumber(VehicleNumberRaw);
     }
 
     [RelayCommand]
@@ -278,6 +349,61 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         {
             NormalizedVehicleNumber = "-";
         }
+    }
+
+    private async Task DebouncedLoadOwnerSuggestionsAsync(string value)
+    {
+        _ownerSuggestionDebounceCts?.Cancel();
+        _ownerSuggestionDebounceCts?.Dispose();
+        _ownerSuggestionDebounceCts = new CancellationTokenSource();
+        var cancellationToken = _ownerSuggestionDebounceCts.Token;
+
+        if (IsExistingVehicle || _vehicleService is null || value.Trim().Length < 2)
+        {
+            ClearOwnerSuggestions();
+            return;
+        }
+
+        try
+        {
+            await Task.Delay(250, cancellationToken);
+            var query = value.Trim();
+            var vehicles = await _vehicleService.SearchByOwnerNameAsync(query, cancellationToken);
+            if (cancellationToken.IsCancellationRequested || !string.Equals(query, OwnerName.Trim(), StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var suggestions = vehicles
+                .Where(vehicle => !string.IsNullOrWhiteSpace(vehicle.OwnerName))
+                .GroupBy(vehicle => vehicle.OwnerName!.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Select(group => new OwnerSuggestion
+                {
+                    OwnerName = group.First().OwnerName!.Trim(),
+                    PhoneNumber = group.FirstOrDefault(vehicle => !string.IsNullOrWhiteSpace(vehicle.PhoneNumber))?.PhoneNumber ?? string.Empty,
+                    Vehicles = group.ToList()
+                })
+                .OrderBy(suggestion => suggestion.OwnerName)
+                .ToList();
+
+            OwnerSuggestions.Clear();
+            foreach (var suggestion in suggestions)
+            {
+                OwnerSuggestions.Add(suggestion);
+            }
+
+            IsOwnerSuggestionsOpen = OwnerSuggestions.Count > 0;
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer owner-name lookup replaced this one.
+        }
+    }
+
+    private void ClearOwnerSuggestions()
+    {
+        OwnerSuggestions.Clear();
+        IsOwnerSuggestionsOpen = false;
     }
 
     private static string? NormalizeOptionalText(string value)
