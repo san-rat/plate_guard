@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,8 +15,14 @@ namespace PlateGuard.App.ViewModels;
 public partial class AddUsageDialogViewModel : ViewModelBase
 {
     private readonly IPromotionUsageService? _promotionUsageService;
+    private readonly IVehicleService? _vehicleService;
+    private CancellationTokenSource? _ownerSuggestionDebounceCts;
+    private CancellationTokenSource? _eligibilityDebounceCts;
+    private bool _suppressOwnerSuggestionSearch;
 
     public ObservableCollection<Promotion> AvailablePromotions { get; } = [];
+    public ObservableCollection<OwnerSuggestion> OwnerSuggestions { get; } = [];
+    public ObservableCollection<Vehicle> ReusableVehicles { get; } = [];
 
     public event Action<bool>? CloseRequested;
 
@@ -35,10 +42,34 @@ public partial class AddUsageDialogViewModel : ViewModelBase
     private Promotion? selectedPromotion;
 
     [ObservableProperty]
+    private DateTimeOffset? serviceDate = DateTimeOffset.Now;
+
+    [ObservableProperty]
+    private string eligibilityHint = "Choose a promotion and enter a vehicle number to preview eligibility.";
+
+    [ObservableProperty]
+    private EligibilityHintTone eligibilityHintTone;
+
+    [ObservableProperty]
+    private bool isEligibilityHintPositive;
+
+    [ObservableProperty]
+    private bool isEligibilityHintNegative;
+
+    [ObservableProperty]
+    private bool isEligibilityHintWarning;
+
+    [ObservableProperty]
     private string phoneNumber = string.Empty;
 
     [ObservableProperty]
     private string ownerName = string.Empty;
+
+    [ObservableProperty]
+    private bool isOwnerSuggestionsOpen;
+
+    [ObservableProperty]
+    private bool hasReusableVehicles;
 
     [ObservableProperty]
     private string brand = string.Empty;
@@ -96,9 +127,11 @@ public partial class AddUsageDialogViewModel : ViewModelBase
 
     public AddUsageDialogViewModel(
         IPromotionUsageService promotionUsageService,
+        IVehicleService? vehicleService,
         AddUsageDialogRequest request)
     {
         _promotionUsageService = promotionUsageService;
+        _vehicleService = vehicleService;
 
         foreach (var promotion in request.AvailablePromotions.OrderBy(promotion => promotion.PromotionName))
         {
@@ -139,9 +172,83 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         UpdateNormalizedVehicleNumber(value);
     }
 
+    partial void OnNormalizedVehicleNumberChanged(string value)
+    {
+        _ = DebouncedUpdateEligibilityHintAsync();
+    }
+
+    partial void OnSelectedPromotionChanged(Promotion? value)
+    {
+        _ = DebouncedUpdateEligibilityHintAsync();
+    }
+
+    partial void OnEligibilityHintToneChanged(EligibilityHintTone value)
+    {
+        IsEligibilityHintPositive = value == EligibilityHintTone.Positive;
+        IsEligibilityHintNegative = value == EligibilityHintTone.Negative;
+        IsEligibilityHintWarning = value == EligibilityHintTone.Warning;
+    }
+
+    partial void OnOwnerNameChanged(string value)
+    {
+        if (_suppressOwnerSuggestionSearch)
+        {
+            return;
+        }
+
+        _ = DebouncedLoadOwnerSuggestionsAsync(value);
+    }
+
     partial void OnIsExistingVehicleChanged(bool value)
     {
         OnPropertyChanged(nameof(CanEditVehicleNumber));
+
+        if (value)
+        {
+            ClearOwnerSuggestions();
+        }
+    }
+
+    [RelayCommand]
+    private void ApplyOwnerSuggestion(OwnerSuggestion? suggestion)
+    {
+        if (suggestion is null)
+        {
+            return;
+        }
+
+        _ownerSuggestionDebounceCts?.Cancel();
+        _suppressOwnerSuggestionSearch = true;
+        OwnerName = suggestion.OwnerName;
+        _suppressOwnerSuggestionSearch = false;
+
+        if (string.IsNullOrWhiteSpace(PhoneNumber))
+        {
+            PhoneNumber = suggestion.PhoneNumber;
+        }
+
+        ReusableVehicles.Clear();
+        foreach (var vehicle in suggestion.Vehicles)
+        {
+            ReusableVehicles.Add(vehicle);
+        }
+
+        HasReusableVehicles = ReusableVehicles.Count > 0;
+        IsOwnerSuggestionsOpen = false;
+    }
+
+    [RelayCommand]
+    private void ReuseVehicle(Vehicle? vehicle)
+    {
+        if (vehicle is null)
+        {
+            return;
+        }
+
+        VehicleNumberRaw = vehicle.VehicleNumberRaw;
+        Brand = vehicle.Brand ?? string.Empty;
+        Model = vehicle.Model ?? string.Empty;
+        UpdateNormalizedVehicleNumber(VehicleNumberRaw);
     }
 
     [RelayCommand]
@@ -176,7 +283,7 @@ public partial class AddUsageDialogViewModel : ViewModelBase
                 DiscountedPrice = ParseNullableDecimal(DiscountedPriceText),
                 AmountPaid = ParseNullableDecimal(AmountPaidText),
                 Notes = NormalizeOptionalText(Notes),
-                ServiceDate = DateTime.Today
+                ServiceDate = ServiceDate?.Date ?? DateTime.Today
             };
 
             LastSaveResult = await _promotionUsageService.SaveVehicleAndUsageAsync(saveRequest);
@@ -218,6 +325,11 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         if (SelectedPromotion is null)
         {
             return "Promotion is required.";
+        }
+
+        if (ServiceDate is null)
+        {
+            return "Service date is required.";
         }
 
         if (string.IsNullOrWhiteSpace(PhoneNumber))
@@ -280,6 +392,114 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         }
     }
 
+    private async Task DebouncedLoadOwnerSuggestionsAsync(string value)
+    {
+        _ownerSuggestionDebounceCts?.Cancel();
+        _ownerSuggestionDebounceCts?.Dispose();
+        _ownerSuggestionDebounceCts = new CancellationTokenSource();
+        var cancellationToken = _ownerSuggestionDebounceCts.Token;
+
+        if (IsExistingVehicle || _vehicleService is null || value.Trim().Length < 2)
+        {
+            ClearOwnerSuggestions();
+            return;
+        }
+
+        try
+        {
+            await Task.Delay(250, cancellationToken);
+            var query = value.Trim();
+            var vehicles = await _vehicleService.SearchByOwnerNameAsync(query, cancellationToken);
+            if (cancellationToken.IsCancellationRequested || !string.Equals(query, OwnerName.Trim(), StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var suggestions = vehicles
+                .Where(vehicle => !string.IsNullOrWhiteSpace(vehicle.OwnerName))
+                .GroupBy(vehicle => vehicle.OwnerName!.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Select(group => new OwnerSuggestion
+                {
+                    OwnerName = group.First().OwnerName!.Trim(),
+                    PhoneNumber = group.FirstOrDefault(vehicle => !string.IsNullOrWhiteSpace(vehicle.PhoneNumber))?.PhoneNumber ?? string.Empty,
+                    Vehicles = group.ToList()
+                })
+                .OrderBy(suggestion => suggestion.OwnerName)
+                .ToList();
+
+            OwnerSuggestions.Clear();
+            foreach (var suggestion in suggestions)
+            {
+                OwnerSuggestions.Add(suggestion);
+            }
+
+            IsOwnerSuggestionsOpen = OwnerSuggestions.Count > 0;
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer owner-name lookup replaced this one.
+        }
+    }
+
+    private async Task DebouncedUpdateEligibilityHintAsync()
+    {
+        _eligibilityDebounceCts?.Cancel();
+        _eligibilityDebounceCts?.Dispose();
+        _eligibilityDebounceCts = new CancellationTokenSource();
+        var cancellationToken = _eligibilityDebounceCts.Token;
+
+        if (_promotionUsageService is null ||
+            SelectedPromotion is null ||
+            string.IsNullOrWhiteSpace(NormalizedVehicleNumber) ||
+            NormalizedVehicleNumber == "-")
+        {
+            EligibilityHint = "Choose a promotion and enter a vehicle number to preview eligibility.";
+            EligibilityHintTone = EligibilityHintTone.Neutral;
+            return;
+        }
+
+        try
+        {
+            await Task.Delay(300, cancellationToken);
+            var result = await _promotionUsageService.CheckEligibilityAsync(
+                NormalizedVehicleNumber,
+                SelectedPromotion.Id,
+                cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (result.IsEligible)
+            {
+                EligibilityHint = "Eligible — this vehicle can use this promotion.";
+                EligibilityHintTone = EligibilityHintTone.Positive;
+                return;
+            }
+
+            EligibilityHint = result.Message;
+            EligibilityHintTone = result.Message.Contains("inactive", StringComparison.OrdinalIgnoreCase)
+                ? EligibilityHintTone.Warning
+                : EligibilityHintTone.Negative;
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer eligibility preview replaced this one.
+        }
+        catch (Exception exception)
+        {
+            EligibilityHint = $"Eligibility preview unavailable: {exception.Message}";
+            EligibilityHintTone = EligibilityHintTone.Warning;
+        }
+    }
+
+    private void ClearOwnerSuggestions()
+    {
+        OwnerSuggestions.Clear();
+        IsOwnerSuggestionsOpen = false;
+    }
+
     private static string? NormalizeOptionalText(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -333,4 +553,12 @@ public partial class AddUsageDialogViewModel : ViewModelBase
         parsedValue = null;
         return false;
     }
+}
+
+public enum EligibilityHintTone
+{
+    Neutral,
+    Positive,
+    Negative,
+    Warning
 }

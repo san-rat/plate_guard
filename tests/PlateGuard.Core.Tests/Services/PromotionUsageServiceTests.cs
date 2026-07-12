@@ -445,6 +445,31 @@ public sealed class PromotionUsageServiceTests
     }
 
     [Fact]
+    public async Task DeleteUsageAsync_UpgradesLegacyPasswordHashAfterSuccessfulVerify()
+    {
+        var usageRepository = new FakePromotionUsageRepository();
+        var settingsRepository = new FakeSettingsRepository
+        {
+            Settings = new AppSettings
+            {
+                Id = AppSettings.DefaultId,
+                DeletePasswordHash = "8C6976E5B5410415BDE908BD4DEE15DFB167A9C873FC4BB8A81F6F2AB448A918"
+            }
+        };
+        var service = CreateService(
+            promotionUsageRepository: usageRepository,
+            settingsRepository: settingsRepository);
+
+        var result = await service.DeleteUsageAsync(10, "admin");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(10, usageRepository.DeletedId);
+        Assert.Equal(1, settingsRepository.UpsertCallCount);
+        Assert.False(DeletePasswordHasher.NeedsUpgrade(settingsRepository.Settings!.DeletePasswordHash));
+        Assert.True(DeletePasswordHasher.Verify("admin", settingsRepository.Settings.DeletePasswordHash));
+    }
+
+    [Fact]
     public async Task UpdateUsageAsync_ReturnsFailureWhenIdIsMissing()
     {
         var usageRepository = new FakePromotionUsageRepository();
@@ -685,9 +710,15 @@ public sealed class PromotionUsageServiceTests
     private sealed class FakeSettingsRepository : ISettingsRepository
     {
         public AppSettings? Settings { get; set; }
+        public int UpsertCallCount { get; private set; }
 
         public Task<AppSettings?> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult(Settings);
-        public Task<AppSettings> UpsertAsync(AppSettings settings, CancellationToken cancellationToken = default) => Task.FromResult(settings);
+        public Task<AppSettings> UpsertAsync(AppSettings settings, CancellationToken cancellationToken = default)
+        {
+            UpsertCallCount++;
+            Settings = settings;
+            return Task.FromResult(settings);
+        }
     }
 
     private sealed class FakePromotionUsageTransactionalWriter : IPromotionUsageTransactionalWriter

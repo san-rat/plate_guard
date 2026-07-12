@@ -192,6 +192,12 @@ public sealed class PromotionUsageService(
             return Failure("Incorrect delete password.");
         }
 
+        if (DeletePasswordHasher.NeedsUpgrade(settings.DeletePasswordHash))
+        {
+            settings.DeletePasswordHash = DeletePasswordHasher.Hash(deletePassword);
+            await _settingsRepository.UpsertAsync(settings, cancellationToken);
+        }
+
         await _promotionUsageRepository.DeleteAsync(id, cancellationToken);
 
         return Success("Record deleted successfully.");

@@ -168,7 +168,7 @@
 
                     <Border Classes="heroCard"
                             Padding="16">
-                        <Grid ColumnDefinitions="*,Auto"
+                        <Grid ColumnDefinitions="*,180,Auto"
                               ColumnSpacing="10"
                               RowDefinitions="Auto,Auto">
                             <StackPanel Spacing="6">
@@ -191,7 +191,19 @@
                                 </Border>
                             </StackPanel>
 
-                            <Button Grid.Column="1"
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding SearchModeOptions}"
+                                      SelectedItem="{Binding SelectedSearchModeOption, Mode=TwoWay}"
+                                      Height="56"
+                                      VerticalAlignment="Bottom">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SearchModeOption">
+                                        <TextBlock Text="{Binding Label}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+
+                            <Button Grid.Column="2"
                                     Classes="secondary"
                                     Width="96"
                                     Height="56"
@@ -934,6 +946,14 @@
                         <TextBlock Text="Settings"
                                    Classes="pageTitle"/>
                     </StackPanel>
+
+                    <Border Classes="statusBanner warning"
+                            Padding="14,12"
+                            IsVisible="{Binding IsDeletePasswordDefault}">
+                        <TextBlock Text="{Binding DeletePasswordDefaultWarning}"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"/>
+                    </Border>
 
                     <Grid ColumnDefinitions="Auto,Auto"
                           ColumnSpacing="20"

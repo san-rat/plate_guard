@@ -28,6 +28,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public event Action<PromotionDialogRequest>? PromotionDialogRequested;
     public event Action<EditUsageDialogRequest>? EditUsageRequested;
     public event Action<DeleteUsageDialogRequest>? DeleteUsageRequested;
+    public event Action<(string Message, bool IsError)>? NotificationRequested;
 
     public ObservableCollection<Promotion> ActivePromotions { get; } = [];
     public ObservableCollection<PromotionManagementItemViewModel> PromotionManagementItems { get; } = [];
@@ -35,6 +36,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<UsageHistoryItemViewModel> SelectedVehicleHistory { get; } = [];
     public ObservableCollection<HistoryPromotionFilterOptionViewModel> HistoryPromotionFilters { get; } = [];
     public ObservableCollection<HistoryRecordItemViewModel> HistoryRecords { get; } = [];
+    public IReadOnlyList<SearchModeOption> SearchModeOptions { get; } =
+    [
+        new(SearchMode.Auto, "Auto"),
+        new(SearchMode.VehicleNumber, "Vehicle number"),
+        new(SearchMode.PhoneNumber, "Phone number"),
+        new(SearchMode.OwnerName, "Owner name")
+    ];
 
     [ObservableProperty]
     private bool isSearchSectionVisible = true;
@@ -50,6 +58,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string searchText = string.Empty;
+
+    [ObservableProperty]
+    private SearchModeOption? selectedSearchModeOption;
 
     [ObservableProperty]
     private Promotion? selectedPromotion;
@@ -208,6 +219,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private string settingsStatusMessage = "Update the shop name, export folder, and delete password.";
 
     [ObservableProperty]
+    private bool isDeletePasswordDefault;
+
+    public string DeletePasswordDefaultWarning => "Default delete password is still active. Change it before regular use.";
+
+    [ObservableProperty]
     private string currentDeletePassword = string.Empty;
 
     [ObservableProperty]
@@ -295,6 +311,7 @@ public partial class MainWindowViewModel : ViewModelBase
         HasHistory = true;
         HasNoHistory = false;
         StatusMessage = "Design preview";
+        SelectedSearchModeOption = SearchModeOptions[0];
         ResultsSummary = "Found 1 matching vehicle.";
         EmptyStateTitle = "No matching vehicle found";
         EmptyStateMessage = "You can add this vehicle to the selected promotion if eligible.";
@@ -363,6 +380,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsShopName = "Sample Service Center";
         SettingsExportFolder = @"C:\Exports\PlateGuard";
         SettingsStatusMessage = "Settings are ready.";
+        IsDeletePasswordDefault = true;
         UpdateSelectedVehicleSummary(SelectedVehicle);
         UpdateSelectedManagementPromotionSummary(SelectedPromotionManagementItem);
         UpdateSelectedHistoryRecordSummary(SelectedHistoryRecord);
@@ -380,6 +398,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _promotionUsageService = promotionUsageService;
         _settingsService = settingsService;
         _exportService = exportService;
+        SelectedSearchModeOption = SearchModeOptions[0];
 
         _ = InitializeAsync();
     }
@@ -408,6 +427,17 @@ public partial class MainWindowViewModel : ViewModelBase
         _searchDebounceCts = cancellationTokenSource;
 
         _ = DebouncedSearchAsync(value, cancellationTokenSource.Token);
+    }
+
+    partial void OnSelectedSearchModeOptionChanged(SearchModeOption? value)
+    {
+        if (_vehicleService is null || string.IsNullOrWhiteSpace(SearchText))
+        {
+            return;
+        }
+
+        _searchDebounceCts?.Cancel();
+        _ = ExecuteSearchAsync(SearchText, CancellationToken.None);
     }
 
     partial void OnSelectedVehicleChanged(Vehicle? value)
@@ -538,6 +568,7 @@ public partial class MainWindowViewModel : ViewModelBase
             });
 
             SettingsStatusMessage = result.Message;
+            RequestNotification(result.Message, !result.IsSuccess);
             if (result.IsSuccess && result.Settings is not null)
             {
                 ApplyLoadedSettings(result.Settings);
@@ -546,6 +577,7 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception exception)
         {
             SettingsStatusMessage = $"Could not save settings: {exception.Message}";
+            RequestNotification(SettingsStatusMessage, isError: true);
         }
         finally
         {
@@ -573,17 +605,20 @@ public partial class MainWindowViewModel : ViewModelBase
             });
 
             SettingsStatusMessage = result.Message;
+            RequestNotification(result.Message, !result.IsSuccess);
             if (result.IsSuccess)
             {
                 CurrentDeletePassword = string.Empty;
                 NewDeletePassword = string.Empty;
                 ConfirmDeletePassword = string.Empty;
                 ApplyLoadedSettings(await _settingsService.GetAsync());
+                IsDeletePasswordDefault = await _settingsService.IsDeletePasswordDefaultAsync();
             }
         }
         catch (Exception exception)
         {
             SettingsStatusMessage = $"Could not change the delete password: {exception.Message}";
+            RequestNotification(SettingsStatusMessage, isError: true);
         }
         finally
         {
@@ -758,6 +793,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var settings = await _settingsService.GetAsync();
             ApplyLoadedSettings(settings);
+            IsDeletePasswordDefault = await _settingsService.IsDeletePasswordDefaultAsync();
             SettingsStatusMessage = "Settings loaded.";
         }
         catch (Exception exception)
@@ -1087,6 +1123,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public async Task RefreshAfterUsageSavedAsync(SavePromotionUsageResult result)
     {
         StatusMessage = result.Message;
+        RequestNotification(result.Message, isError: !result.IsSuccess);
 
         if (result.PromotionUsage is not null)
         {
@@ -1134,6 +1171,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshCurrentSearchAsync();
         await RefreshSelectionStateAsync();
         HistoryRecordsStatusMessage = "Record updated successfully.";
+        RequestNotification(HistoryRecordsStatusMessage, isError: false);
     }
 
     public async Task RefreshAfterUsageDeletedAsync()
@@ -1143,6 +1181,12 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshCurrentSearchAsync();
         await RefreshSelectionStateAsync();
         HistoryRecordsStatusMessage = "Record deleted successfully.";
+        RequestNotification(HistoryRecordsStatusMessage, isError: false);
+    }
+
+    public void RequestNotification(string message, bool isError)
+    {
+        NotificationRequested?.Invoke((message, isError));
     }
 
     private void ClearSearchState()
@@ -1545,8 +1589,13 @@ public partial class MainWindowViewModel : ViewModelBase
         return false;
     }
 
-    private static SearchMode DetectSearchMode(string query)
+    private SearchMode DetectSearchMode(string query)
     {
+        if (SelectedSearchModeOption is not null && SelectedSearchModeOption.Mode != SearchMode.Auto)
+        {
+            return SelectedSearchModeOption.Mode;
+        }
+
         var trimmed = query.Trim();
         var letterCount = trimmed.Count(char.IsLetter);
         var digitCount = trimmed.Count(char.IsDigit);
@@ -1566,13 +1615,6 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         return SearchMode.OwnerName;
-    }
-
-    private enum SearchMode
-    {
-        VehicleNumber,
-        PhoneNumber,
-        OwnerName
     }
 
     private enum EligibilityDisplayTone

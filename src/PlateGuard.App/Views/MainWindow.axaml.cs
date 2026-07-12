@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls;
+using Avalonia.Controls.Notifications;
 using Microsoft.Extensions.DependencyInjection;
 using PlateGuard.App.ViewModels;
 
@@ -9,6 +10,7 @@ public partial class MainWindow : Window
 {
     private readonly IServiceProvider? _serviceProvider;
     private MainWindowViewModel? _viewModel;
+    private WindowNotificationManager? _notificationManager;
 
     public MainWindow()
     {
@@ -25,6 +27,11 @@ public partial class MainWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+        _notificationManager = new WindowNotificationManager(this)
+        {
+            Position = NotificationPosition.TopRight,
+            MaxItems = 3
+        };
         SearchInputTextBox?.Focus();
     }
 
@@ -36,6 +43,7 @@ public partial class MainWindow : Window
             _viewModel.PromotionDialogRequested -= OnPromotionDialogRequested;
             _viewModel.EditUsageRequested -= OnEditUsageRequested;
             _viewModel.DeleteUsageRequested -= OnDeleteUsageRequested;
+            _viewModel.NotificationRequested -= OnNotificationRequested;
         }
 
         base.OnClosed(e);
@@ -49,6 +57,7 @@ public partial class MainWindow : Window
             _viewModel.PromotionDialogRequested -= OnPromotionDialogRequested;
             _viewModel.EditUsageRequested -= OnEditUsageRequested;
             _viewModel.DeleteUsageRequested -= OnDeleteUsageRequested;
+            _viewModel.NotificationRequested -= OnNotificationRequested;
         }
 
         _viewModel = DataContext as MainWindowViewModel;
@@ -59,7 +68,20 @@ public partial class MainWindow : Window
             _viewModel.PromotionDialogRequested += OnPromotionDialogRequested;
             _viewModel.EditUsageRequested += OnEditUsageRequested;
             _viewModel.DeleteUsageRequested += OnDeleteUsageRequested;
+            _viewModel.NotificationRequested += OnNotificationRequested;
         }
+    }
+
+    private void OnNotificationRequested((string Message, bool IsError) notification)
+    {
+        var title = notification.IsError ? "Action needed" : "Saved";
+        var type = notification.IsError ? NotificationType.Error : NotificationType.Success;
+
+        _notificationManager?.Show(new Notification(
+            title,
+            notification.Message,
+            type,
+            TimeSpan.FromSeconds(4)));
     }
 
     private async void OnAddUsageRequested(AddUsageDialogRequest request)

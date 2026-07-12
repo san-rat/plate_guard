@@ -63,6 +63,12 @@ public sealed class SettingsService(ISettingsRepository settingsRepository) : IS
         return Success("Delete password changed successfully.");
     }
 
+    public async Task<bool> IsDeletePasswordDefaultAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await GetOrCreateSettingsAsync(cancellationToken);
+        return DeletePasswordHasher.Verify("admin", settings.DeletePasswordHash);
+    }
+
     private async Task<AppSettings> GetOrCreateSettingsAsync(CancellationToken cancellationToken)
     {
         var existingSettings = await _settingsRepository.GetAsync(cancellationToken);
