@@ -219,6 +219,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private string settingsStatusMessage = "Update the shop name, export folder, and delete password.";
 
     [ObservableProperty]
+    private bool isDeletePasswordDefault;
+
+    public string DeletePasswordDefaultWarning => "Default delete password is still active. Change it before regular use.";
+
+    [ObservableProperty]
     private string currentDeletePassword = string.Empty;
 
     [ObservableProperty]
@@ -375,6 +380,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SettingsShopName = "Sample Service Center";
         SettingsExportFolder = @"C:\Exports\PlateGuard";
         SettingsStatusMessage = "Settings are ready.";
+        IsDeletePasswordDefault = true;
         UpdateSelectedVehicleSummary(SelectedVehicle);
         UpdateSelectedManagementPromotionSummary(SelectedPromotionManagementItem);
         UpdateSelectedHistoryRecordSummary(SelectedHistoryRecord);
@@ -606,6 +612,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 NewDeletePassword = string.Empty;
                 ConfirmDeletePassword = string.Empty;
                 ApplyLoadedSettings(await _settingsService.GetAsync());
+                IsDeletePasswordDefault = await _settingsService.IsDeletePasswordDefaultAsync();
             }
         }
         catch (Exception exception)
@@ -786,6 +793,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var settings = await _settingsService.GetAsync();
             ApplyLoadedSettings(settings);
+            IsDeletePasswordDefault = await _settingsService.IsDeletePasswordDefaultAsync();
             SettingsStatusMessage = "Settings loaded.";
         }
         catch (Exception exception)

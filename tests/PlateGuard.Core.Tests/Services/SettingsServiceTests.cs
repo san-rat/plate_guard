@@ -151,6 +151,39 @@ public sealed class SettingsServiceTests
         Assert.Equal(originalHash, repository.CurrentSettings.DeletePasswordHash);
     }
 
+    [Fact]
+    public async Task IsDeletePasswordDefaultAsync_ReturnsTrueForSeededDefault()
+    {
+        var repository = new InMemorySettingsRepository();
+        var service = new SettingsService(repository);
+
+        var result = await service.IsDeletePasswordDefaultAsync();
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task IsDeletePasswordDefaultAsync_ReturnsFalseAfterPasswordChange()
+    {
+        var repository = new InMemorySettingsRepository(new AppSettings
+        {
+            Id = AppSettings.DefaultId,
+            DeletePasswordHash = DeletePasswordHasher.Hash("admin")
+        });
+        var service = new SettingsService(repository);
+
+        await service.ChangeDeletePasswordAsync(new ChangeDeletePasswordRequest
+        {
+            CurrentPassword = "admin",
+            NewPassword = "new-secret",
+            ConfirmNewPassword = "new-secret"
+        });
+
+        var result = await service.IsDeletePasswordDefaultAsync();
+
+        Assert.False(result);
+    }
+
     private sealed class InMemorySettingsRepository : ISettingsRepository
     {
         public InMemorySettingsRepository(AppSettings? currentSettings = null)

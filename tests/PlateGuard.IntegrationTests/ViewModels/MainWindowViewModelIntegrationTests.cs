@@ -161,6 +161,34 @@ public sealed class MainWindowViewModelIntegrationTests
     }
 
     [Fact]
+    public async Task DeletePasswordWarning_IsLoadedAndClearsAfterPasswordChange()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var viewModel = new MainWindowViewModel(
+            app.GetRequiredService<IVehicleService>(),
+            app.GetRequiredService<IPromotionService>(),
+            app.GetRequiredService<IPromotionUsageService>(),
+            app.GetRequiredService<ISettingsService>(),
+            app.GetRequiredService<IExportService>());
+
+        await TestWait.UntilAsync(
+            () => viewModel.SettingsStatusMessage == "Settings loaded.",
+            "Main window view model did not load settings.");
+
+        Assert.True(viewModel.IsDeletePasswordDefault);
+        Assert.Equal("Default delete password is still active. Change it before regular use.", viewModel.DeletePasswordDefaultWarning);
+
+        viewModel.CurrentDeletePassword = "admin";
+        viewModel.NewDeletePassword = "new-secret";
+        viewModel.ConfirmDeletePassword = "new-secret";
+
+        await viewModel.ChangeDeletePasswordCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsDeletePasswordDefault);
+    }
+
+    [Fact]
     public async Task SelectedVehicle_WithActivePromotion_EnablesRegisterNewVehicle()
     {
         await using var app = await IntegrationTestApp.CreateAsync();

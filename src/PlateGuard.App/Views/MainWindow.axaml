@@ -947,6 +947,14 @@
                                    Classes="pageTitle"/>
                     </StackPanel>
 
+                    <Border Classes="statusBanner warning"
+                            Padding="14,12"
+                            IsVisible="{Binding IsDeletePasswordDefault}">
+                        <TextBlock Text="{Binding DeletePasswordDefaultWarning}"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"/>
+                    </Border>
+
                     <Grid ColumnDefinitions="Auto,Auto"
                           ColumnSpacing="20"
                           HorizontalAlignment="Left">

@@ -187,12 +187,10 @@
                     </StackPanel>
                 </Border>
 
-                <Border Classes="surfaceCard"
-                        Padding="18">
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="Additional Details"
-                                   Classes="sectionTitle"/>
-
+                <Expander Header="More details (optional)"
+                          IsExpanded="False">
+                    <Border Classes="surfaceCard"
+                            Padding="18">
                         <Grid ColumnDefinitions="*,*,*"
                               ColumnSpacing="16"
                               RowDefinitions="Auto,Auto,Auto">
@@ -235,8 +233,8 @@
                                          VerticalContentAlignment="Top"/>
                             </StackPanel>
                         </Grid>
-                    </StackPanel>
-                </Border>
+                    </Border>
+                </Expander>
 
                 <Border Classes="softCard"
                         Padding="14,12">

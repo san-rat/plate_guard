@@ -17,7 +17,7 @@ public sealed class PromotionUsageIntegrationTests
         Assert.NotNull(settings);
         Assert.Equal(AppSettings.DefaultId, settings!.Id);
         Assert.NotNull(settings.DeletePasswordHash);
-        Assert.Equal(64, settings.DeletePasswordHash!.Length);
+        Assert.StartsWith("PBKDF2$210000$", settings.DeletePasswordHash);
     }
 
     [Fact]
