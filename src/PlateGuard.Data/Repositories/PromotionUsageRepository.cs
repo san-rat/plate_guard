@@ -76,12 +76,12 @@ public sealed class PromotionUsageRepository(PlateGuardDbContextFactory dbContex
         {
             var normalizedVehicleNumber = VehicleNumberNormalizer.Normalize(searchText);
             usageQuery = usageQuery.Where(usage =>
-                EF.Functions.Like(usage.Vehicle.VehicleNumberRaw, $"%{searchText}%") ||
+                usage.Vehicle.VehicleNumberRaw.Contains(searchText) ||
                 (!string.IsNullOrWhiteSpace(normalizedVehicleNumber) &&
-                 EF.Functions.Like(usage.Vehicle.VehicleNumberNormalized, $"%{normalizedVehicleNumber}%")) ||
-                EF.Functions.Like(usage.Vehicle.PhoneNumber, $"%{searchText}%") ||
-                (usage.Vehicle.OwnerName != null && EF.Functions.Like(usage.Vehicle.OwnerName, $"%{searchText}%")) ||
-                EF.Functions.Like(usage.Promotion.PromotionName, $"%{searchText}%"));
+                 usage.Vehicle.VehicleNumberNormalized.Contains(normalizedVehicleNumber)) ||
+                usage.Vehicle.PhoneNumber.Contains(searchText) ||
+                (usage.Vehicle.OwnerName != null && usage.Vehicle.OwnerName.Contains(searchText)) ||
+                usage.Promotion.PromotionName.Contains(searchText));
         }
 
         var entities = await usageQuery

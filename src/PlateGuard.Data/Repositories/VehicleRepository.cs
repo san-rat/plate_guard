@@ -64,7 +64,7 @@ public sealed class VehicleRepository(PlateGuardDbContextFactory dbContextFactor
         await using var dbContext = CreateDbContext();
         var entities = await dbContext.Vehicles
             .AsNoTracking()
-            .Where(vehicle => vehicle.OwnerName != null && EF.Functions.Like(vehicle.OwnerName, $"%{query}%"))
+            .Where(vehicle => vehicle.OwnerName != null && vehicle.OwnerName.Contains(query))
             .OrderBy(vehicle => vehicle.OwnerName)
             .ThenBy(vehicle => vehicle.VehicleNumberNormalized)
             .ToListAsync(cancellationToken);
