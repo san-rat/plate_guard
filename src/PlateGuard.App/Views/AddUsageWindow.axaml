@@ -12,10 +12,11 @@
         d:DesignHeight="700"
         Title="Add Usage"
         Width="840"
-        Height="700"
+        SizeToContent="Height"
         MinWidth="760"
         MinHeight="620"
-        CanResize="False"
+        MaxHeight="900"
+        CanResize="True"
         WindowStartupLocation="CenterOwner">
 
     <Design.DataContext>
@@ -188,12 +189,13 @@
                 </Border>
 
                 <Expander Header="More details (optional)"
-                          IsExpanded="False">
+                          IsExpanded="False"
+                          HorizontalAlignment="Stretch">
                     <Border Classes="surfaceCard"
                             Padding="18">
                         <Grid ColumnDefinitions="*,*,*"
                               ColumnSpacing="16"
-                              RowDefinitions="Auto,Auto,Auto">
+                              RowDefinitions="Auto,Auto">
                             <StackPanel Spacing="6">
                                 <TextBlock Text="Mileage"
                                            Classes="label"/>
@@ -221,14 +223,15 @@
                                 <TextBox Text="{Binding AmountPaidText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                             </StackPanel>
 
-                            <StackPanel Grid.Row="2"
-                                        Grid.ColumnSpan="3"
+                            <StackPanel Grid.Row="1"
+                                        Grid.Column="1"
+                                        Grid.ColumnSpan="2"
                                         Spacing="6">
                                 <TextBlock Text="Notes"
                                            Classes="label"/>
                                 <TextBox Text="{Binding Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          AcceptsReturn="True"
-                                         Height="110"
+                                         Height="96"
                                          TextWrapping="Wrap"
                                          VerticalContentAlignment="Top"/>
                             </StackPanel>

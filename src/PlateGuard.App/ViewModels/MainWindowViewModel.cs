@@ -23,6 +23,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private AppSettings? _loadedSettings;
     private CancellationTokenSource? _searchDebounceCts;
     private bool _suppressSearchTextChanged;
+    private bool _isAutoSelectingVehicle;
 
     public event Action<AddUsageDialogRequest>? AddUsageRequested;
     public event Action<PromotionDialogRequest>? PromotionDialogRequested;
@@ -70,8 +71,17 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private Promotion? selectedPromotion;
 
-    [ObservableProperty]
     private Vehicle? selectedVehicle;
+
+    public Vehicle? SelectedVehicle
+    {
+        get => selectedVehicle;
+        set
+        {
+            SetProperty(ref selectedVehicle, value);
+            OnSelectedVehicleChanged(value);
+        }
+    }
 
     [ObservableProperty]
     private string statusMessage = "Loading promotions...";
@@ -138,6 +148,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool canAddUsage;
+
+    [ObservableProperty]
+    private bool isVehicleSelectionConfirmed;
 
     [ObservableProperty]
     private bool isEligibilityPositive;
@@ -293,6 +306,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public string SettingsExportFolderHint => "Leave blank to use the default Documents/PlateGuard Exports folder.";
 
+    public bool CanCreateVehicleFromEmptyState => SelectedPromotion is not null && string.IsNullOrWhiteSpace(SearchText);
+
     public MainWindowViewModel()
     {
         // Design-time data only.
@@ -309,7 +324,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Brand = "Toyota",
             Model = "Corolla"
         });
-        SelectedVehicle = SearchResults[0];
+        SetSelectedVehicleAutomatically(SearchResults[0]);
         SelectedVehicleHistory.Add(new UsageHistoryItemViewModel("New Year Promo", DateTime.Today, "5000.00"));
         HasSearchResults = true;
         HasNoSearchResults = false;
@@ -413,6 +428,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string value)
     {
+        OnPropertyChanged(nameof(CanCreateVehicleFromEmptyState));
+        IsVehicleSelectionConfirmed = false;
+
         if (_suppressSearchTextChanged)
         {
             return;
@@ -448,14 +466,24 @@ public partial class MainWindowViewModel : ViewModelBase
         _ = ExecuteSearchAsync(SearchText, CancellationToken.None);
     }
 
-    partial void OnSelectedVehicleChanged(Vehicle? value)
+    private void OnSelectedVehicleChanged(Vehicle? value)
     {
+        IsVehicleSelectionConfirmed = !_isAutoSelectingVehicle;
         UpdateSelectedVehicleSummary(value);
         _ = RefreshSelectionStateAsync();
     }
 
+    partial void OnIsVehicleSelectionConfirmedChanged(bool value)
+    {
+        if (HasSearchResults && !value)
+        {
+            CanAddUsage = false;
+        }
+    }
+
     partial void OnSelectedPromotionChanged(Promotion? value)
     {
+        OnPropertyChanged(nameof(CanCreateVehicleFromEmptyState));
         UpdateSelectedPromotionSummary(value);
         _ = RefreshSelectionStateAsync();
     }
@@ -745,7 +773,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void AddUsage()
     {
-        if (!CanAddUsage || SelectedPromotion is null)
+        if ((!CanAddUsage && !CanCreateVehicleFromEmptyState) || SelectedPromotion is null)
         {
             return;
         }
@@ -997,7 +1025,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 HasSearchResults = false;
                 HasNoSearchResults = true;
-                SelectedVehicle = null;
+                SetSelectedVehicleAutomatically(null);
                 SelectedVehicleHistory.Clear();
                 HasHistory = false;
                 HasNoHistory = true;
@@ -1018,7 +1046,7 @@ public partial class MainWindowViewModel : ViewModelBase
             EmptyStateMessage = string.Empty;
             ResultsSummary = $"Found {SearchResults.Count} matching vehicle(s).";
             StatusMessage = $"Found {SearchResults.Count} matching vehicle(s).";
-            SelectedVehicle = SearchResults[0];
+            SetSelectedVehicleAutomatically(SearchResults[0]);
         }
         catch (OperationCanceledException)
         {
@@ -1029,7 +1057,7 @@ public partial class MainWindowViewModel : ViewModelBase
             SearchResults.Clear();
             HasSearchResults = false;
             HasNoSearchResults = true;
-            SelectedVehicle = null;
+            SetSelectedVehicleAutomatically(null);
             SelectedVehicleHistory.Clear();
             HasHistory = false;
             HasNoHistory = true;
@@ -1176,8 +1204,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         await ExecuteSearchAsync(query, CancellationToken.None, SearchMode.VehicleNumber);
 
-        SelectedVehicle = SearchResults.FirstOrDefault(vehicle => vehicle.Id == result.Vehicle.Id)
-            ?? SearchResults.FirstOrDefault();
+        SetSelectedVehicleAutomatically(
+            SearchResults.FirstOrDefault(vehicle => vehicle.Id == result.Vehicle.Id)
+            ?? SearchResults.FirstOrDefault());
 
         StatusMessage = result.Message;
     }
@@ -1221,7 +1250,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SearchResults.Clear();
         HasSearchResults = false;
         HasNoSearchResults = true;
-        SelectedVehicle = null;
+        SetSelectedVehicleAutomatically(null);
         SelectedVehicleHistory.Clear();
         HasHistory = false;
         HasNoHistory = true;
@@ -1258,6 +1287,19 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedVehicleBrandModel = string.IsNullOrWhiteSpace(vehicle.Brand) && string.IsNullOrWhiteSpace(vehicle.Model)
             ? "-"
             : $"{vehicle.Brand} {vehicle.Model}".Trim();
+    }
+
+    private void SetSelectedVehicleAutomatically(Vehicle? vehicle)
+    {
+        _isAutoSelectingVehicle = true;
+        try
+        {
+            SelectedVehicle = vehicle;
+        }
+        finally
+        {
+            _isAutoSelectingVehicle = false;
+        }
     }
 
     private void UpdateSelectedPromotionSummary(Promotion? promotion)
@@ -1567,7 +1609,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         EligibilityTitle = title;
         EligibilityMessage = message;
-        CanAddUsage = canAddUsage;
+        CanAddUsage = canAddUsage && (!HasSearchResults || IsVehicleSelectionConfirmed);
         IsEligibilityPositive = tone == EligibilityDisplayTone.Positive;
         IsEligibilityNegative = tone == EligibilityDisplayTone.Negative;
         IsEligibilityWarning = tone == EligibilityDisplayTone.Warning;

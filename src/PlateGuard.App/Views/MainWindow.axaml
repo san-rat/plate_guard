@@ -15,9 +15,9 @@
         Title="PlateGuard"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="-1"
-        Width="1240"
+        Width="1360"
         Height="800"
-        MinWidth="1080"
+        MinWidth="1180"
         MinHeight="720">
 
     <Design.DataContext>
@@ -301,15 +301,23 @@
                                                     VerticalAlignment="Center"
                                                     HorizontalAlignment="Center"
                                                     Spacing="4">
-                                            <TextBlock Text="{Binding EmptyStateTitle}"
-                                                       FontSize="17"
-                                                       FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"
-                                                       TextAlignment="Center"/>
-                                            <TextBlock Text="{Binding EmptyStateMessage}"
-                                                       Classes="muted"
-                                                       HorizontalAlignment="Center"
-                                                       TextAlignment="Center"/>
+                                             <TextBlock Text="{Binding EmptyStateTitle}"
+                                                        FontSize="17"
+                                                        FontWeight="SemiBold"
+                                                        HorizontalAlignment="Center"
+                                                        TextAlignment="Center"
+                                                        TextWrapping="Wrap"/>
+                                             <TextBlock Text="{Binding EmptyStateMessage}"
+                                                        Classes="muted"
+                                                        HorizontalAlignment="Center"
+                                                        TextAlignment="Center"
+                                                        TextWrapping="Wrap"/>
+                                            <Button Classes="primary"
+                                                    MinWidth="160"
+                                                    HorizontalAlignment="Center"
+                                                    Command="{Binding AddUsageCommand}"
+                                                    Content="New Vehicle"
+                                                    IsVisible="{Binding CanCreateVehicleFromEmptyState}"/>
                                         </StackPanel>
                                     </Grid>
                                 </Grid>
@@ -392,9 +400,10 @@
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="Eligibility"
                                                    Classes="eyebrow"/>
-                                        <TextBlock Text="{Binding EligibilityTitle}"
-                                                   FontSize="20"
-                                                   FontWeight="SemiBold"/>
+                                         <TextBlock Text="{Binding EligibilityTitle}"
+                                                    FontSize="20"
+                                                    FontWeight="SemiBold"
+                                                    TextWrapping="Wrap"/>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="1"
@@ -615,7 +624,7 @@
                                             Content="Edit Promotion"
                                             IsEnabled="{Binding CanEditSelectedPromotion}"/>
                                     <Button Grid.Column="2"
-                                            Classes="primary"
+                                            Classes="secondary"
                                             MinWidth="120"
                                             Command="{Binding ToggleSelectedPromotionStatusCommand}"
                                             Content="{Binding TogglePromotionStatusButtonText}"

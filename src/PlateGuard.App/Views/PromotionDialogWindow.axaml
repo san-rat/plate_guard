@@ -10,9 +10,10 @@
         d:DesignHeight="520"
         Title="Promotion"
         Width="720"
-        Height="520"
+        SizeToContent="Height"
         MinWidth="660"
         MinHeight="480"
+        MaxHeight="900"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
 

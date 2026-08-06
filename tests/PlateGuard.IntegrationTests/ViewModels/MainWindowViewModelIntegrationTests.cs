@@ -233,4 +233,156 @@ public sealed class MainWindowViewModelIntegrationTests
 
         Assert.True(viewModel.CanRegisterNewVehicle);
     }
+
+    [Fact]
+    public async Task SearchWithResults_DoesNotEnableAddUsageUntilSelectionIsConfirmed()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var promotionService = app.GetRequiredService<IPromotionService>();
+        var vehicleService = app.GetRequiredService<IVehicleService>();
+        await promotionService.CreateAsync(new Promotion { PromotionName = "Selection Promo", IsActive = true });
+        await vehicleService.CreateAsync(new Vehicle { VehicleNumberRaw = "SEL-1001", PhoneNumber = "0771001001" });
+
+        var viewModel = new MainWindowViewModel(
+            vehicleService,
+            promotionService,
+            app.GetRequiredService<IPromotionUsageService>(),
+            app.GetRequiredService<ISettingsService>(),
+            app.GetRequiredService<IExportService>());
+
+        await TestWait.UntilAsync(
+            () => viewModel.ActivePromotions.Count > 0 && viewModel.SelectedPromotion is not null,
+            "Main window view model did not load active promotions.");
+
+        await TestWait.UntilAsync(
+            () => viewModel.SettingsStatusMessage == "Settings loaded.",
+            "Main window view model did not finish initialization.");
+
+        viewModel.SearchText = "SEL-1001";
+
+        await TestWait.UntilAsync(
+            () => viewModel.HasSearchResults && viewModel.SelectedVehicle is not null,
+            "Main window view model did not find the vehicle.");
+
+        Assert.NotNull(viewModel.SelectedVehicle);
+        Assert.False(viewModel.CanAddUsage);
+    }
+
+    [Fact]
+    public async Task SearchWithResults_EnablesAddUsageAfterExplicitSelection()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var promotionService = app.GetRequiredService<IPromotionService>();
+        var vehicleService = app.GetRequiredService<IVehicleService>();
+        await promotionService.CreateAsync(new Promotion { PromotionName = "Confirmation Promo", IsActive = true });
+        await vehicleService.CreateAsync(new Vehicle { VehicleNumberRaw = "SEL-1002", PhoneNumber = "0771001002" });
+
+        var viewModel = new MainWindowViewModel(
+            vehicleService,
+            promotionService,
+            app.GetRequiredService<IPromotionUsageService>(),
+            app.GetRequiredService<ISettingsService>(),
+            app.GetRequiredService<IExportService>());
+
+        await TestWait.UntilAsync(
+            () => viewModel.ActivePromotions.Count > 0 && viewModel.SelectedPromotion is not null,
+            "Main window view model did not load active promotions.");
+
+        await TestWait.UntilAsync(
+            () => viewModel.SettingsStatusMessage == "Settings loaded.",
+            "Main window view model did not finish initialization.");
+
+        viewModel.SearchText = "SEL-1002";
+
+        await TestWait.UntilAsync(
+            () => viewModel.HasSearchResults && viewModel.SelectedVehicle is not null,
+            "Main window view model did not find the vehicle.");
+
+        viewModel.SelectedVehicle = viewModel.SearchResults[0];
+
+        await TestWait.UntilAsync(
+            () => viewModel.CanAddUsage,
+            "Main window view model did not enable Add Usage after explicit selection.");
+
+        Assert.True(viewModel.CanAddUsage);
+    }
+
+    [Fact]
+    public async Task ChangingSearchText_ResetsSelectionConfirmation()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var promotionService = app.GetRequiredService<IPromotionService>();
+        var vehicleService = app.GetRequiredService<IVehicleService>();
+        await promotionService.CreateAsync(new Promotion { PromotionName = "Reset Promo", IsActive = true });
+        await vehicleService.CreateAsync(new Vehicle { VehicleNumberRaw = "RST-1001", PhoneNumber = "0771001003" });
+        await vehicleService.CreateAsync(new Vehicle { VehicleNumberRaw = "RST-1002", PhoneNumber = "0771001004" });
+
+        var viewModel = new MainWindowViewModel(
+            vehicleService,
+            promotionService,
+            app.GetRequiredService<IPromotionUsageService>(),
+            app.GetRequiredService<ISettingsService>(),
+            app.GetRequiredService<IExportService>());
+
+        await TestWait.UntilAsync(
+            () => viewModel.ActivePromotions.Count > 0 && viewModel.SelectedPromotion is not null,
+            "Main window view model did not load active promotions.");
+
+        await TestWait.UntilAsync(
+            () => viewModel.SettingsStatusMessage == "Settings loaded.",
+            "Main window view model did not finish initialization.");
+
+        viewModel.SearchText = "RST-1001";
+
+        await TestWait.UntilAsync(
+            () => viewModel.HasSearchResults && viewModel.SelectedVehicle is not null,
+            "Main window view model did not find the first vehicle.");
+
+        viewModel.SelectedVehicle = viewModel.SearchResults[0];
+
+        await TestWait.UntilAsync(
+            () => viewModel.CanAddUsage,
+            "Main window view model did not enable Add Usage after explicit selection.");
+
+        viewModel.SearchText = "RST-1002";
+
+        await TestWait.UntilAsync(
+            () => viewModel.SelectedVehicle?.VehicleNumberRaw == "RST-1002" && !viewModel.CanAddUsage,
+            "Main window view model did not reset selection confirmation for the next search.");
+
+        Assert.False(viewModel.CanAddUsage);
+    }
+
+    [Fact]
+    public async Task EmptySearchWithActivePromotion_AllowsVehicleCreation()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var promotionService = app.GetRequiredService<IPromotionService>();
+        await promotionService.CreateAsync(new Promotion { PromotionName = "Empty Search Promo", IsActive = true });
+
+        var viewModel = new MainWindowViewModel(
+            app.GetRequiredService<IVehicleService>(),
+            promotionService,
+            app.GetRequiredService<IPromotionUsageService>(),
+            app.GetRequiredService<ISettingsService>(),
+            app.GetRequiredService<IExportService>());
+
+        await TestWait.UntilAsync(
+            () => viewModel.ActivePromotions.Count > 0 && viewModel.SelectedPromotion is not null,
+            "Main window view model did not load active promotions.");
+
+        await TestWait.UntilAsync(
+            () => viewModel.SettingsStatusMessage == "Settings loaded.",
+            "Main window view model did not finish initialization.");
+
+        Assert.True(viewModel.CanCreateVehicleFromEmptyState);
+
+        viewModel.SearchText = "new vehicle";
+
+        Assert.False(viewModel.CanCreateVehicleFromEmptyState);
+    }
 }
