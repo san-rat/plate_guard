@@ -15,25 +15,35 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        using var serviceProvider = new ServiceCollection()
+        // Disposed explicitly instead of with `using`: the container holds SyncScheduler, which
+        // implements only IAsyncDisposable, and synchronous Dispose() throws on such a container.
+        // Main stays synchronous so Avalonia starts on the STA thread [STAThread] guarantees.
+        var serviceProvider = new ServiceCollection()
             .AddPlateGuardApplication()
             .BuildServiceProvider();
 
-        App.ConfigureServices(serviceProvider);
-
-        var databaseInitializer = serviceProvider.GetRequiredService<PlateGuardDatabaseInitializer>();
-        databaseInitializer.InitializeAsync().GetAwaiter().GetResult();
-
-        var syncScheduler = serviceProvider.GetRequiredService<SyncScheduler>();
-        syncScheduler.Start();
-
         try
         {
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            App.ConfigureServices(serviceProvider);
+
+            var databaseInitializer = serviceProvider.GetRequiredService<PlateGuardDatabaseInitializer>();
+            databaseInitializer.InitializeAsync().GetAwaiter().GetResult();
+
+            var syncScheduler = serviceProvider.GetRequiredService<SyncScheduler>();
+            syncScheduler.Start();
+
+            try
+            {
+                BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            }
+            finally
+            {
+                syncScheduler.StopAsync().GetAwaiter().GetResult();
+            }
         }
         finally
         {
-            syncScheduler.StopAsync().GetAwaiter().GetResult();
+            serviceProvider.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
     }
 
