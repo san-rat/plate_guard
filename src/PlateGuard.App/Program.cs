@@ -1,6 +1,7 @@
 ﻿using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using PlateGuard.App.Composition;
+using PlateGuard.Cloud;
 using PlateGuard.Data.Db;
 using System;
 
@@ -23,7 +24,17 @@ sealed class Program
         var databaseInitializer = serviceProvider.GetRequiredService<PlateGuardDatabaseInitializer>();
         databaseInitializer.InitializeAsync().GetAwaiter().GetResult();
 
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        var syncScheduler = serviceProvider.GetRequiredService<SyncScheduler>();
+        syncScheduler.Start();
+
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            syncScheduler.StopAsync().GetAwaiter().GetResult();
+        }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

@@ -54,6 +54,31 @@ create unique index ux_promotion_usages_vehicle_promotion_live
     on public.promotion_usages (vehicle_sync_id, promotion_sync_id)
     where is_deleted = false;
 
+create index ix_vehicles_updated_at on public.vehicles (updated_at);
+create index ix_promotions_updated_at on public.promotions (updated_at);
+create index ix_promotion_usages_updated_at on public.promotion_usages (updated_at);
+
+create function public.set_updated_at() returns trigger
+language plpgsql
+as $$
+begin
+    new.updated_at = now();
+    return new;
+end;
+$$;
+
+create trigger vehicles_set_updated_at
+before insert or update on public.vehicles
+for each row execute function public.set_updated_at();
+
+create trigger promotions_set_updated_at
+before insert or update on public.promotions
+for each row execute function public.set_updated_at();
+
+create trigger promotion_usages_set_updated_at
+before insert or update on public.promotion_usages
+for each row execute function public.set_updated_at();
+
 alter table public.vehicles enable row level security;
 alter table public.promotions enable row level security;
 alter table public.promotion_usages enable row level security;

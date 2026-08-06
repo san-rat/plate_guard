@@ -32,6 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\PlateGuard.Cloud\PlateGuard.Cloud.csproj" />
     <ProjectReference Include="..\PlateGuard.Core\PlateGuard.Core.csproj" />
     <ProjectReference Include="..\PlateGuard.Data\PlateGuard.Data.csproj" />
   </ItemGroup>

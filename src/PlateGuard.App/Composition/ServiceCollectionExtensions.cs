@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using PlateGuard.App.ViewModels;
 using PlateGuard.App.Views;
+using PlateGuard.Cloud.Composition;
 using PlateGuard.Core.Interfaces;
 using PlateGuard.Core.Services;
 using PlateGuard.Data.Db;
@@ -12,6 +13,8 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddPlateGuardApplication(this IServiceCollection services)
     {
+        services.AddPlateGuardCloud();
+
         services.AddSingleton<PlateGuardDbContextFactory>();
         services.AddSingleton<PlateGuardDatabaseInitializer>();
 
