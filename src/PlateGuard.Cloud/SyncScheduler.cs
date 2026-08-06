@@ -18,6 +18,10 @@ public sealed class SyncScheduler(
     private Task? _runTask;
     private int _started;
 
+    public SyncSchedulerState State { get; private set; } = new(false, null, null, null);
+
+    public event Action<SyncSchedulerState>? StateChanged;
+
     public void Start()
     {
         if (Interlocked.Exchange(ref _started, 1) != 0)
@@ -35,6 +39,11 @@ public sealed class SyncScheduler(
         {
             await Task.WhenAny(_runTask, Task.Delay(TimeSpan.FromSeconds(5)));
         }
+    }
+
+    public Task SyncNowAsync(CancellationToken cancellationToken = default)
+    {
+        return SyncOnceAsync(cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
@@ -84,11 +93,40 @@ public sealed class SyncScheduler(
 
         try
         {
-            await _syncEngine.SyncAsync(cancellationToken);
+            UpdateState(State with { IsRunning = true, LastErrorMessage = null });
+
+            var result = await _syncEngine.SyncAsync(cancellationToken);
+            UpdateState(new SyncSchedulerState(
+                false,
+                result.Status == SyncStatus.Success ? DateTime.UtcNow : State.LastSyncedAtUtc,
+                result,
+                result.ErrorMessage));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            UpdateState(State with { IsRunning = false });
+            throw;
+        }
+        catch (Exception exception)
+        {
+            UpdateState(new SyncSchedulerState(false, State.LastSyncedAtUtc, null, exception.Message));
+            throw;
         }
         finally
         {
             _syncGate.Release();
         }
     }
+
+    private void UpdateState(SyncSchedulerState state)
+    {
+        State = state;
+        StateChanged?.Invoke(state);
+    }
 }
+
+public sealed record SyncSchedulerState(
+    bool IsRunning,
+    DateTime? LastSyncedAtUtc,
+    SyncResult? LastResult,
+    string? LastErrorMessage);

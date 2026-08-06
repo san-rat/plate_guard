@@ -11,6 +11,7 @@ public static class CloudServiceCollectionExtensions
         services.AddSingleton<ICloudSyncClient, SupabaseCloudSyncClient>();
         services.AddSingleton<SyncReconciler>();
         services.AddSingleton<ISyncEngine, SyncEngine>();
+        services.AddSingleton<ISyncConflictService, SyncConflictService>();
         services.AddSingleton<SyncScheduler>();
 
         return services;

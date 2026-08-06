@@ -36,6 +36,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public ObservableCollection<UsageHistoryItemViewModel> SelectedVehicleHistory { get; } = [];
     public ObservableCollection<HistoryPromotionFilterOptionViewModel> HistoryPromotionFilters { get; } = [];
     public ObservableCollection<HistoryRecordItemViewModel> HistoryRecords { get; } = [];
+    public SyncSectionViewModel? Sync { get; }
+    public bool HasSyncSection => Sync is not null;
     public IReadOnlyList<SearchModeOption> SearchModeOptions { get; } =
     [
         new(SearchMode.Auto, "Auto"),
@@ -55,6 +57,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool isSettingsSectionVisible;
+
+    [ObservableProperty]
+    private bool isSyncSectionVisible;
 
     [ObservableProperty]
     private string searchText = string.Empty;
@@ -291,6 +296,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         // Design-time data only.
+        Sync = new SyncSectionViewModel();
         ActivePromotions.Add(new Promotion { Id = 1, PromotionName = "Sample Promotion", IsActive = true });
         SelectedPromotion = ActivePromotions[0];
         SearchResults.Add(new Vehicle
@@ -391,13 +397,15 @@ public partial class MainWindowViewModel : ViewModelBase
         IPromotionService promotionService,
         IPromotionUsageService promotionUsageService,
         ISettingsService settingsService,
-        IExportService exportService)
+        IExportService exportService,
+        SyncSectionViewModel? syncSection = null)
     {
         _vehicleService = vehicleService;
         _promotionService = promotionService;
         _promotionUsageService = promotionUsageService;
         _settingsService = settingsService;
         _exportService = exportService;
+        Sync = syncSection;
         SelectedSearchModeOption = SearchModeOptions[0];
 
         _ = InitializeAsync();
@@ -483,6 +491,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsPromotionsSectionVisible = false;
         IsHistorySectionVisible = false;
         IsSettingsSectionVisible = false;
+        IsSyncSectionVisible = false;
     }
 
     [RelayCommand]
@@ -492,6 +501,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsPromotionsSectionVisible = true;
         IsHistorySectionVisible = false;
         IsSettingsSectionVisible = false;
+        IsSyncSectionVisible = false;
         await LoadPromotionManagementAsync();
     }
 
@@ -502,6 +512,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsPromotionsSectionVisible = false;
         IsHistorySectionVisible = true;
         IsSettingsSectionVisible = false;
+        IsSyncSectionVisible = false;
         await LoadHistoryRecordsAsync();
     }
 
@@ -512,7 +523,23 @@ public partial class MainWindowViewModel : ViewModelBase
         IsPromotionsSectionVisible = false;
         IsHistorySectionVisible = false;
         IsSettingsSectionVisible = true;
+        IsSyncSectionVisible = false;
         await LoadSettingsAsync();
+    }
+
+    [RelayCommand]
+    private async Task ShowSyncSectionAsync()
+    {
+        IsSearchSectionVisible = false;
+        IsPromotionsSectionVisible = false;
+        IsHistorySectionVisible = false;
+        IsSettingsSectionVisible = false;
+        IsSyncSectionVisible = true;
+
+        if (Sync is not null)
+        {
+            await Sync.LoadAsync();
+        }
     }
 
     [RelayCommand]
