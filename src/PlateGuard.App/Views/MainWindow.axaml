@@ -126,13 +126,15 @@
 
                 <StackPanel Grid.Row="2"
                             Margin="16,0,16,16"
-                            Spacing="2"
-                            IsVisible="{Binding HasSyncSection}">
+                            Spacing="2">
                     <TextBlock Text="{Binding Sync.SyncStatusText}"
-                               Foreground="{StaticResource BrushSidebarMuted}"/>
+                               Foreground="{StaticResource BrushSidebarMuted}"
+                               IsVisible="{Binding HasSyncSection}"/>
                     <TextBlock Text="{Binding Sync.UnacknowledgedConflictCount, StringFormat={}{0} unacknowledged conflict(s)}"
                                Foreground="{StaticResource BrushSidebarMuted}"
                                IsVisible="{Binding Sync.HasUnacknowledgedConflicts}"/>
+                    <TextBlock Text="v1.0"
+                               Foreground="{StaticResource BrushSidebarMuted}"/>
                 </StackPanel>
             </Grid>
         </Border>

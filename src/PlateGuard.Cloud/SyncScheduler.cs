@@ -57,7 +57,15 @@ public sealed class SyncScheduler(
     {
         try
         {
-            if (await IsCatchUpRequiredAsync(_cancellationTokenSource.Token))
+            // Seed from the persisted watermark so the UI does not report "Never" on every
+            // launch when the last sync was recent enough that no catch-up is due.
+            var lastSyncedAtUtc = await GetPersistedLastSyncedAtUtcAsync(_cancellationTokenSource.Token);
+            if (lastSyncedAtUtc.HasValue)
+            {
+                UpdateState(State with { LastSyncedAtUtc = lastSyncedAtUtc });
+            }
+
+            if (lastSyncedAtUtc is null || DateTime.UtcNow - lastSyncedAtUtc.Value >= SyncPeriod)
             {
                 await SyncOnceAsync(_cancellationTokenSource.Token);
             }
@@ -77,11 +85,11 @@ public sealed class SyncScheduler(
         }
     }
 
-    private async Task<bool> IsCatchUpRequiredAsync(CancellationToken cancellationToken)
+    private async Task<DateTime?> GetPersistedLastSyncedAtUtcAsync(CancellationToken cancellationToken)
     {
         await using var dbContext = _dbContextFactory.CreateDbContext([]);
         var settings = await dbContext.Settings.SingleOrDefaultAsync(settings => settings.Id == AppSettings.DefaultId, cancellationToken);
-        return settings?.LastSyncedAtUtc is null || DateTime.UtcNow - settings.LastSyncedAtUtc.Value >= SyncPeriod;
+        return settings?.LastSyncedAtUtc;
     }
 
     private async Task SyncOnceAsync(CancellationToken cancellationToken)

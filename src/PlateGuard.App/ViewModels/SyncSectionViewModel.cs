@@ -113,15 +113,29 @@ public sealed partial class SyncSectionViewModel : ViewModelBase
         if (Dispatcher.UIThread.CheckAccess())
         {
             ApplySchedulerState(state);
-            _ = RefreshConflictsAsync();
+            _ = RefreshConflictsSafelyAsync();
             return;
         }
 
-        Dispatcher.UIThread.Post(async () =>
+        Dispatcher.UIThread.Post(() =>
         {
             ApplySchedulerState(state);
-            await RefreshConflictsAsync();
+            _ = RefreshConflictsSafelyAsync();
         });
+    }
+
+    // Raised from the sync background thread while the engine is writing to the same SQLite
+    // file, so this can genuinely fail. An unobserved throw here would land on the dispatcher.
+    private async Task RefreshConflictsSafelyAsync()
+    {
+        try
+        {
+            await RefreshConflictsAsync();
+        }
+        catch
+        {
+            // Counts refresh again on the next sync or when the Sync section is opened.
+        }
     }
 
     private async Task RefreshConflictsAsync(CancellationToken cancellationToken = default)
