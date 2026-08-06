@@ -11,7 +11,7 @@ public sealed class SupabaseCloudSyncClient(CloudSyncOptions options) : ICloudSy
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
     private readonly CloudSyncOptions _options = options;
     private Supabase.Client? _client;
-    private bool _signedIn;
+    private bool _initialized;
 
     public async Task SignInAsync(CancellationToken cancellationToken = default)
     {
@@ -20,14 +20,15 @@ public sealed class SupabaseCloudSyncClient(CloudSyncOptions options) : ICloudSy
         requestCancellationToken.ThrowIfCancellationRequested();
 
         var client = GetClient();
-        if (_signedIn)
+        if (!_initialized)
         {
-            return;
+            await client.InitializeAsync().WaitAsync(requestCancellationToken);
+            _initialized = true;
         }
 
-        await client.InitializeAsync().WaitAsync(requestCancellationToken);
+        // Sign in on every sync rather than caching the session: the access token expires long
+        // before the next six-hourly tick, so a cached one would 401 on every run after the first.
         await client.Auth.SignInWithPassword(_options.ServiceAccountEmail, _options.ServiceAccountPassword).WaitAsync(requestCancellationToken);
-        _signedIn = true;
     }
 
     public Task<IReadOnlyList<VehicleRow>> FetchVehiclesAsync(DateTime? changedAfterUtc, CancellationToken cancellationToken = default)
@@ -68,7 +69,7 @@ public sealed class SupabaseCloudSyncClient(CloudSyncOptions options) : ICloudSy
             new Supabase.SupabaseOptions
             {
                 AutoConnectRealtime = false,
-                AutoRefreshToken = false
+                AutoRefreshToken = true
             });
     }
 
