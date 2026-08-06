@@ -44,8 +44,10 @@ create table public.promotion_usages (
     updated_at timestamptz
 );
 
+-- Scoped by owner_id to match the RLS model: a second account must be able to hold
+-- the same plate without colliding with this one.
 create unique index ux_vehicles_vehicle_number_normalized_live
-    on public.vehicles (vehicle_number_normalized)
+    on public.vehicles (owner_id, vehicle_number_normalized)
     where is_deleted = false;
 
 create unique index ux_promotion_usages_vehicle_promotion_live

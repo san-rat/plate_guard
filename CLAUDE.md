@@ -31,7 +31,9 @@ dotnet test .\tests\PlateGuard.Core.Tests\PlateGuard.Core.Tests.csproj --filter 
 dotnet run --project .\tools\PlateGuard.SmokeTests\PlateGuard.SmokeTests.csproj
 
 # EF Core migrations (requires dotnet-ef local tool)
-dotnet ef migrations add <MigrationName> --project .\src\PlateGuard.Data --startup-project .\src\PlateGuard.App
+# Startup project is Data, not App: App references no EF packages, so it cannot host the
+# design-time build. PlateGuardDbContextFactory (IDesignTimeDbContextFactory) lives in Data.
+dotnet ef migrations add <MigrationName> --project .\src\PlateGuard.Data --startup-project .\src\PlateGuard.Data
 ```
 
 ## Architecture
