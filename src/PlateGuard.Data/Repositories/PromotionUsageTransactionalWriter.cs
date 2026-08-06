@@ -95,10 +95,12 @@ public sealed class PromotionUsageTransactionalWriter(PlateGuardDbContextFactory
             promotionUsage.ServiceDate = promotionUsage.ServiceDate.Date;
             promotionUsage.UpdatedAt = DateTime.UtcNow;
             PromotionUsageMapper.UpdateEntity(usageEntity, promotionUsage);
+            usageEntity.IsDirty = true;
 
             vehicle.UpdatedAt = DateTime.UtcNow;
             VehicleMapper.UpdateEntity(vehicleEntity, vehicle);
             NormalizeVehicle(vehicleEntity);
+            vehicleEntity.IsDirty = true;
 
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -163,6 +165,7 @@ public sealed class PromotionUsageTransactionalWriter(PlateGuardDbContextFactory
         trackedVehicle.UpdatedAt = DateTime.UtcNow;
 
         NormalizeVehicle(trackedVehicle);
+        trackedVehicle.IsDirty = true;
         return trackedVehicle;
     }
 

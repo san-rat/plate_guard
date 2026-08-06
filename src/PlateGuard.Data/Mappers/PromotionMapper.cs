@@ -10,6 +10,7 @@ internal static class PromotionMapper
         return new Promotion
         {
             Id = entity.Id,
+            SyncId = entity.SyncId,
             PromotionName = entity.PromotionName,
             Description = entity.Description,
             StartDate = entity.StartDate,
@@ -25,6 +26,7 @@ internal static class PromotionMapper
         return new PromotionEntity
         {
             Id = model.Id,
+            SyncId = model.SyncId == Guid.Empty ? Guid.NewGuid() : model.SyncId,
             PromotionName = model.PromotionName,
             Description = model.Description,
             StartDate = model.StartDate,

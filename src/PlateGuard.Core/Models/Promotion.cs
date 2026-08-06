@@ -3,6 +3,7 @@ namespace PlateGuard.Core.Models;
 public sealed class Promotion
 {
     public int Id { get; set; }
+    public Guid SyncId { get; set; }
     public string PromotionName { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime? StartDate { get; set; }

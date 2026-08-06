@@ -151,6 +151,7 @@ public sealed class PromotionUsageRepository(PlateGuardDbContextFactory dbContex
         promotionUsage.ServiceDate = promotionUsage.ServiceDate.Date;
         promotionUsage.UpdatedAt = DateTime.UtcNow;
         PromotionUsageMapper.UpdateEntity(entity, promotionUsage);
+        entity.IsDirty = true;
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -165,7 +166,9 @@ public sealed class PromotionUsageRepository(PlateGuardDbContextFactory dbContex
             return;
         }
 
-        dbContext.PromotionUsages.Remove(entity);
+        entity.IsDeleted = true;
+        entity.DeletedAtUtc = DateTime.UtcNow;
+        entity.IsDirty = true;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

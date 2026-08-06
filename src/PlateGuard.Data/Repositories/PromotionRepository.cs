@@ -63,6 +63,7 @@ public sealed class PromotionRepository(PlateGuardDbContextFactory dbContextFact
 
         promotion.UpdatedAt = DateTime.UtcNow;
         PromotionMapper.UpdateEntity(entity, promotion);
+        entity.IsDirty = true;
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

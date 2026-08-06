@@ -3,6 +3,10 @@ namespace PlateGuard.Data.Entities;
 public sealed class PromotionUsageEntity
 {
     public int Id { get; set; }
+    public Guid SyncId { get; set; } = Guid.NewGuid();
+    public bool IsDirty { get; set; } = true;
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
     public int VehicleId { get; set; }
     public int PromotionId { get; set; }
     public DateTime ServiceDate { get; set; }

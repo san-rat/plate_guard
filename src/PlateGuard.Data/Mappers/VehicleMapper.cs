@@ -10,6 +10,7 @@ internal static class VehicleMapper
         return new Vehicle
         {
             Id = entity.Id,
+            SyncId = entity.SyncId,
             VehicleNumberRaw = entity.VehicleNumberRaw,
             VehicleNumberNormalized = entity.VehicleNumberNormalized,
             PhoneNumber = entity.PhoneNumber,
@@ -26,6 +27,7 @@ internal static class VehicleMapper
         return new VehicleEntity
         {
             Id = model.Id,
+            SyncId = model.SyncId == Guid.Empty ? Guid.NewGuid() : model.SyncId,
             VehicleNumberRaw = model.VehicleNumberRaw,
             VehicleNumberNormalized = model.VehicleNumberNormalized,
             PhoneNumber = model.PhoneNumber,

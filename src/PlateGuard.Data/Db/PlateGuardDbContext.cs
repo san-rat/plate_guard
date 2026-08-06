@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using PlateGuard.Data.Entities;
 
 namespace PlateGuard.Data.Db;
@@ -9,6 +10,11 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
     public DbSet<PromotionEntity> Promotions => Set<PromotionEntity>();
     public DbSet<PromotionUsageEntity> PromotionUsages => Set<PromotionUsageEntity>();
     public DbSet<SettingsEntity> Settings => Set<SettingsEntity>();
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning));
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,11 +44,26 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
         builder.Property(vehicle => vehicle.CreatedAt)
             .IsRequired();
 
+        builder.Property(vehicle => vehicle.SyncId)
+            .IsRequired();
+
+        builder.Property(vehicle => vehicle.IsDirty)
+            .IsRequired();
+
+        builder.Property(vehicle => vehicle.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.HasIndex(vehicle => vehicle.VehicleNumberNormalized)
+            .IsUnique();
+
+        builder.HasIndex(vehicle => vehicle.SyncId)
             .IsUnique();
 
         builder.HasIndex(vehicle => vehicle.PhoneNumber);
         builder.HasIndex(vehicle => vehicle.OwnerName);
+
+        builder.HasQueryFilter(vehicle => !vehicle.IsDeleted);
     }
 
     private static void ConfigurePromotions(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<PromotionEntity> builder)
@@ -61,7 +82,22 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
         builder.Property(promotion => promotion.CreatedAt)
             .IsRequired();
 
+        builder.Property(promotion => promotion.SyncId)
+            .IsRequired();
+
+        builder.Property(promotion => promotion.IsDirty)
+            .IsRequired();
+
+        builder.Property(promotion => promotion.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.HasIndex(promotion => promotion.IsActive);
+
+        builder.HasIndex(promotion => promotion.SyncId)
+            .IsUnique();
+
+        builder.HasQueryFilter(promotion => !promotion.IsDeleted);
     }
 
     private static void ConfigurePromotionUsages(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<PromotionUsageEntity> builder)
@@ -76,11 +112,25 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
         builder.Property(usage => usage.CreatedAt)
             .IsRequired();
 
+        builder.Property(usage => usage.SyncId)
+            .IsRequired();
+
+        builder.Property(usage => usage.IsDirty)
+            .IsRequired();
+
+        builder.Property(usage => usage.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.HasIndex(usage => usage.ServiceDate);
         builder.HasIndex(usage => usage.VehicleId);
         builder.HasIndex(usage => usage.PromotionId);
 
         builder.HasIndex(usage => new { usage.VehicleId, usage.PromotionId })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = 0");
+
+        builder.HasIndex(usage => usage.SyncId)
             .IsUnique();
 
         builder.HasOne(usage => usage.Vehicle)
@@ -92,6 +142,8 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
             .WithMany(promotion => promotion.PromotionUsages)
             .HasForeignKey(usage => usage.PromotionId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasQueryFilter(usage => !usage.IsDeleted);
     }
 
     private static void ConfigureSettings(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<SettingsEntity> builder)

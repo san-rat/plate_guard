@@ -3,6 +3,7 @@ namespace PlateGuard.Core.Models;
 public sealed class PromotionUsage
 {
     public int Id { get; set; }
+    public Guid SyncId { get; set; }
     public int VehicleId { get; set; }
     public int PromotionId { get; set; }
     public DateTime ServiceDate { get; set; }
