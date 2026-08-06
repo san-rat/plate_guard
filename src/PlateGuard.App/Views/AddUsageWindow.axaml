@@ -95,7 +95,7 @@
 
                             <StackPanel Grid.Row="2"
                                         Spacing="6">
-                                <TextBlock Text="Owner Name"
+                                <TextBlock Text="Owner Name *"
                                            Classes="label"/>
                                 <TextBox Text="{Binding OwnerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                 <Popup IsOpen="{Binding IsOwnerSuggestionsOpen, Mode=TwoWay}"
@@ -254,7 +254,7 @@
                 Padding="24,14">
             <Grid ColumnDefinitions="*,Auto,Auto"
                   ColumnSpacing="12">
-                <TextBlock Text="Required: vehicle number, promotion, and phone number."
+                <TextBlock Text="Required: vehicle number, promotion, phone number, and owner name."
                            VerticalAlignment="Center"
                            Classes="subtle"/>
                 <Button Grid.Column="1"

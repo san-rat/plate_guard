@@ -9,9 +9,9 @@ public sealed class HistoryRecordItemViewModel(PromotionUsageRecord record)
     public int PromotionUsageId => Record.PromotionUsageId;
     public int VehicleId => Record.VehicleId;
     public int PromotionId => Record.PromotionId;
-    public string VehicleNumberDisplay => string.IsNullOrWhiteSpace(Record.VehicleNumberRaw)
+    public string VehicleNumberDisplay => (string.IsNullOrWhiteSpace(Record.VehicleNumberRaw)
         ? Record.VehicleNumberNormalized
-        : Record.VehicleNumberRaw;
+        : Record.VehicleNumberRaw.Trim()).ToUpperInvariant();
     public string VehicleNumberNormalized => Record.VehicleNumberNormalized;
     public string PhoneNumber => Record.PhoneNumber;
     public string OwnerName => string.IsNullOrWhiteSpace(Record.OwnerName) ? "-" : Record.OwnerName.Trim();

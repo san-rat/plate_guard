@@ -60,8 +60,8 @@
                                     Spacing="6">
                             <TextBlock Text="Start Date"
                                        Classes="label"/>
-                            <TextBox Text="{Binding StartDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     PlaceholderText="yyyy-MM-dd"/>
+                            <DatePicker SelectedDate="{Binding StartDate, Mode=TwoWay}"
+                                        HorizontalAlignment="Stretch"/>
                         </StackPanel>
 
                         <StackPanel Grid.Row="2"
@@ -70,8 +70,8 @@
                                     Spacing="6">
                             <TextBlock Text="End Date"
                                        Classes="label"/>
-                            <TextBox Text="{Binding EndDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     PlaceholderText="yyyy-MM-dd"/>
+                            <DatePicker SelectedDate="{Binding EndDate, Mode=TwoWay}"
+                                        HorizontalAlignment="Stretch"/>
                         </StackPanel>
 
                         <StackPanel Grid.Row="3"

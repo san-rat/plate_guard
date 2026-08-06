@@ -12,7 +12,7 @@ public sealed class PromotionManagementItemViewModel(Promotion promotion, int us
     public bool IsActive => Promotion.IsActive;
     public int UsageCount { get; } = usageCount;
     public string StatusText => Promotion.IsActive ? "Active" : "Inactive";
-    public string UsageCountText => $"{UsageCount} usage record(s)";
+    public string UsageCountText => UsageCount == 1 ? "1 usage record" : $"{UsageCount} usage records";
 
     public string ScheduleText =>
         (Promotion.StartDate, Promotion.EndDate) switch

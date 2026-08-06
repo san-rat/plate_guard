@@ -4,6 +4,9 @@ using PlateGuard.App.Composition;
 using PlateGuard.Cloud;
 using PlateGuard.Data.Db;
 using System;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 
 namespace PlateGuard.App;
 
@@ -15,6 +18,14 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // One process per database. Two instances on the same SQLite file race each other, and
+        // the six-hourly sync makes that worse: both would push and pull the same rows.
+        using var singleInstance = new Mutex(true, SingleInstanceMutexName, out var isOnlyInstance);
+        if (!isOnlyInstance)
+        {
+            return;
+        }
+
         // Disposed explicitly instead of with `using`: the container holds SyncScheduler, which
         // implements only IAsyncDisposable, and synchronous Dispose() throws on such a container.
         // Main stays synchronous so Avalonia starts on the STA thread [STAThread] guarantees.
@@ -44,6 +55,18 @@ sealed class Program
         finally
         {
             serviceProvider.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+    }
+
+    // Keyed on the resolved database path, not the app, so a second instance pointed at a
+    // different PLATEGUARD_DB_PATH still starts. Hashed because a mutex name cannot contain '\'.
+    private static string SingleInstanceMutexName
+    {
+        get
+        {
+            var path = PlateGuardDatabasePathProvider.GetDatabasePath().ToUpperInvariant();
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(path));
+            return "Local\\PlateGuard-" + Convert.ToHexString(hash, 0, 8);
         }
     }
 

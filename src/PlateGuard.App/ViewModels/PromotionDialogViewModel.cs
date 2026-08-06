@@ -28,16 +28,16 @@ public partial class PromotionDialogViewModel : ViewModelBase
     private string description = string.Empty;
 
     [ObservableProperty]
-    private string startDateText = string.Empty;
+    private DateTimeOffset? startDate;
 
     [ObservableProperty]
-    private string endDateText = string.Empty;
+    private DateTimeOffset? endDate;
 
     [ObservableProperty]
     private bool isActive = true;
 
     [ObservableProperty]
-    private string statusMessage = "Promotion name is required. Dates use yyyy-MM-dd if entered.";
+    private string statusMessage = "Promotion name is required. Dates are optional.";
 
     [ObservableProperty]
     private bool isSaving;
@@ -50,8 +50,8 @@ public partial class PromotionDialogViewModel : ViewModelBase
         SaveButtonText = "Save Changes";
         PromotionName = "Sample Promotion";
         Description = "New Year special";
-        StartDateText = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        EndDateText = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        StartDate = new DateTimeOffset(DateTime.Today);
+        EndDate = new DateTimeOffset(DateTime.Today.AddDays(30));
         IsActive = true;
     }
 
@@ -72,8 +72,8 @@ public partial class PromotionDialogViewModel : ViewModelBase
         SaveButtonText = "Save Changes";
         PromotionName = request.Promotion.PromotionName;
         Description = request.Promotion.Description ?? string.Empty;
-        StartDateText = FormatDate(request.Promotion.StartDate);
-        EndDateText = FormatDate(request.Promotion.EndDate);
+        StartDate = ToOffset(request.Promotion.StartDate);
+        EndDate = ToOffset(request.Promotion.EndDate);
         IsActive = request.Promotion.IsActive;
     }
 
@@ -139,15 +139,9 @@ public partial class PromotionDialogViewModel : ViewModelBase
             return "Promotion name is required.";
         }
 
-        if (!TryParseOptionalDate(StartDateText, out startDate))
-        {
-            return "Start date must be a valid date in yyyy-MM-dd format.";
-        }
-
-        if (!TryParseOptionalDate(EndDateText, out endDate))
-        {
-            return "End date must be a valid date in yyyy-MM-dd format.";
-        }
+        // The picker cannot produce an unparseable value, so only the ordering needs checking.
+        startDate = StartDate?.Date;
+        endDate = EndDate?.Date;
 
         if (startDate.HasValue && endDate.HasValue && endDate.Value.Date < startDate.Value.Date)
         {
@@ -157,37 +151,13 @@ public partial class PromotionDialogViewModel : ViewModelBase
         return null;
     }
 
-    private static bool TryParseOptionalDate(string value, out DateTime? parsedDate)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            parsedDate = null;
-            return true;
-        }
-
-        if (DateTime.TryParseExact(
-                value.Trim(),
-                "yyyy-MM-dd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out var exactDate) ||
-            DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out exactDate))
-        {
-            parsedDate = exactDate.Date;
-            return true;
-        }
-
-        parsedDate = null;
-        return false;
-    }
-
     private static string? NormalizeOptionalText(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private static string FormatDate(DateTime? value)
+    private static DateTimeOffset? ToOffset(DateTime? value)
     {
-        return value.HasValue ? value.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : string.Empty;
+        return value.HasValue ? new DateTimeOffset(value.Value.Date) : null;
     }
 }

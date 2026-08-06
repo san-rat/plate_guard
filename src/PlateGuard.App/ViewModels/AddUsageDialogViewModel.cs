@@ -337,6 +337,11 @@ public partial class AddUsageDialogViewModel : ViewModelBase
             return "Phone number is required.";
         }
 
+        if (string.IsNullOrWhiteSpace(OwnerName))
+        {
+            return "Owner name is required.";
+        }
+
         if (!TryParseNullableInt(MileageText, out var mileage))
         {
             return "Mileage must be a whole number.";
