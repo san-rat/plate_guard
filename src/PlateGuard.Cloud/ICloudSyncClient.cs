@@ -8,6 +8,8 @@ public interface ICloudSyncClient
     Task<IReadOnlyList<VehicleRow>> FetchVehiclesAsync(DateTime? changedAfterUtc, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PromotionRow>> FetchPromotionsAsync(DateTime? changedAfterUtc, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PromotionUsageRow>> FetchPromotionUsagesAsync(DateTime? changedAfterUtc, CancellationToken cancellationToken = default);
+    Task<VehicleRow?> FindLiveVehicleByNormalizedNumberAsync(string vehicleNumberNormalized, CancellationToken cancellationToken = default);
+    Task<PromotionUsageRow?> FindLivePromotionUsageAsync(Guid vehicleSyncId, Guid promotionSyncId, CancellationToken cancellationToken = default);
     Task<CloudUpsertResult> UpsertVehiclesAsync(IReadOnlyCollection<VehicleRow> rows, CancellationToken cancellationToken = default);
     Task<CloudUpsertResult> UpsertPromotionsAsync(IReadOnlyCollection<PromotionRow> rows, CancellationToken cancellationToken = default);
     Task<CloudUpsertResult> UpsertPromotionUsagesAsync(IReadOnlyCollection<PromotionUsageRow> rows, CancellationToken cancellationToken = default);
@@ -24,8 +26,8 @@ public sealed class CloudAcceptedRow(Guid syncId, DateTime? updatedAtUtc)
     public DateTime? UpdatedAtUtc { get; } = updatedAtUtc;
 }
 
-public sealed class CloudUniqueConstraintException(Guid syncId, Exception innerException)
-    : Exception($"Cloud unique constraint rejected sync id {syncId}.", innerException)
+public sealed class CloudUniqueConstraintException(Guid? syncId, Exception innerException)
+    : Exception($"Cloud unique constraint rejected sync id {syncId?.ToString() ?? "batch"}.", innerException)
 {
-    public Guid SyncId { get; } = syncId;
+    public Guid? SyncId { get; } = syncId;
 }

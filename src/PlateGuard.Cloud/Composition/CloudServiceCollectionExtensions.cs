@@ -9,6 +9,7 @@ public static class CloudServiceCollectionExtensions
         services.AddSingleton(CloudSyncOptions.FromEnvironment());
         services.AddSingleton<ISyncLog, TraceSyncLog>();
         services.AddSingleton<ICloudSyncClient, SupabaseCloudSyncClient>();
+        services.AddSingleton<SyncReconciler>();
         services.AddSingleton<ISyncEngine, SyncEngine>();
         services.AddSingleton<SyncScheduler>();
 

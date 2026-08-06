@@ -46,6 +46,23 @@ public sealed class SupabaseCloudSyncClient(CloudSyncOptions options) : ICloudSy
         return FetchAsync<PromotionUsageRow>(changedAfterUtc, cancellationToken);
     }
 
+    public Task<VehicleRow?> FindLiveVehicleByNormalizedNumberAsync(string vehicleNumberNormalized, CancellationToken cancellationToken = default)
+    {
+        return FindLiveAsync<VehicleRow>("vehicle_number_normalized", vehicleNumberNormalized, cancellationToken);
+    }
+
+    public async Task<PromotionUsageRow?> FindLivePromotionUsageAsync(Guid vehicleSyncId, Guid promotionSyncId, CancellationToken cancellationToken = default)
+    {
+        using var timeoutCancellationTokenSource = CreateTimeoutCancellationTokenSource(cancellationToken);
+        IPostgrestTable<PromotionUsageRow> table = GetClient().From<PromotionUsageRow>();
+        var response = await table
+            .Filter("vehicle_sync_id", Constants.Operator.Equals, vehicleSyncId)
+            .Filter("promotion_sync_id", Constants.Operator.Equals, promotionSyncId)
+            .Filter("is_deleted", Constants.Operator.Equals, false)
+            .Get(timeoutCancellationTokenSource.Token);
+        return response.Models.SingleOrDefault();
+    }
+
     public Task<CloudUpsertResult> UpsertVehiclesAsync(IReadOnlyCollection<VehicleRow> rows, CancellationToken cancellationToken = default)
     {
         return UpsertAsync(rows, row => row.SyncId, row => row.UpdatedAtUtc, cancellationToken);
@@ -113,10 +130,22 @@ public sealed class SupabaseCloudSyncClient(CloudSyncOptions options) : ICloudSy
                 .Select(row => new CloudAcceptedRow(getSyncId(row), getUpdatedAtUtc(row)))
                 .ToList());
         }
-        catch (PostgrestException exception) when (IsUniqueConstraintViolation(exception) && rows.Count == 1)
+        catch (PostgrestException exception) when (IsUniqueConstraintViolation(exception))
         {
-            throw new CloudUniqueConstraintException(getSyncId(rows.Single()), exception);
+            throw new CloudUniqueConstraintException(rows.Count == 1 ? getSyncId(rows.Single()) : null, exception);
         }
+    }
+
+    private async Task<T?> FindLiveAsync<T>(string column, string value, CancellationToken cancellationToken)
+        where T : BaseModel, new()
+    {
+        using var timeoutCancellationTokenSource = CreateTimeoutCancellationTokenSource(cancellationToken);
+        IPostgrestTable<T> table = GetClient().From<T>();
+        var response = await table
+            .Filter(column, Constants.Operator.Equals, value)
+            .Filter("is_deleted", Constants.Operator.Equals, false)
+            .Get(timeoutCancellationTokenSource.Token);
+        return response.Models.SingleOrDefault();
     }
 
     private static bool IsUniqueConstraintViolation(PostgrestException exception)

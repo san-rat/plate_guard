@@ -218,6 +218,7 @@ public sealed class SyncEngineIntegrationTests
         var result = await CreateEngine(app, fake).SyncAsync();
 
         Assert.Equal(1, result.Conflicts);
+        Assert.Equal(3, fake.VehicleUpsertCalls);
         await using var dbContext = app.GetRequiredService<PlateGuardDbContextFactory>().CreateDbContext([]);
         Assert.True((await dbContext.Vehicles.IgnoreQueryFilters().SingleAsync(entity => entity.Id == rejected.Id)).IsDirty);
         Assert.False((await dbContext.Vehicles.IgnoreQueryFilters().SingleAsync(entity => entity.Id == accepted.Id)).IsDirty);

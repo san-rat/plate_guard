@@ -9,12 +9,14 @@ public sealed class SyncEngine(
     ICloudSyncClient cloudSyncClient,
     PlateGuardDbContextFactory dbContextFactory,
     CloudSyncOptions options,
-    ISyncLog syncLog) : ISyncEngine
+    ISyncLog syncLog,
+    SyncReconciler? syncReconciler = null) : ISyncEngine
 {
     private readonly ICloudSyncClient _cloudSyncClient = cloudSyncClient;
     private readonly PlateGuardDbContextFactory _dbContextFactory = dbContextFactory;
     private readonly CloudSyncOptions _options = options;
     private readonly ISyncLog _syncLog = syncLog;
+    private readonly SyncReconciler? _syncReconciler = syncReconciler;
     private int _unconfiguredLogged;
 
     public async Task<SyncResult> SyncAsync(CancellationToken cancellationToken = default)
@@ -105,22 +107,34 @@ public sealed class SyncEngine(
     private async Task PushVehiclesAsync(PlateGuardDbContext dbContext, SyncResult result, CancellationToken cancellationToken)
     {
         var entities = await dbContext.Vehicles.IgnoreQueryFilters().Where(entity => entity.IsDirty).ToListAsync(cancellationToken);
-        foreach (var entity in entities)
+        foreach (var chunk in entities.Chunk(500))
         {
             try
             {
-                var response = await _cloudSyncClient.UpsertVehiclesAsync([ToRow(entity)], cancellationToken);
-                if (TryAccept(response, entity.SyncId, out var updatedAtUtc))
+                var response = await _cloudSyncClient.UpsertVehiclesAsync(chunk.Select(ToRow).ToList(), cancellationToken);
+                foreach (var entity in chunk)
                 {
-                    entity.IsDirty = false;
-                    entity.UpdatedAt = updatedAtUtc ?? entity.UpdatedAt;
-                    result.VehiclesPushed++;
+                    Accept(response, entity, result);
                 }
             }
             catch (CloudUniqueConstraintException)
             {
-                result.Conflicts++;
-                _syncLog.Info($"Cloud sync conflict for vehicle {entity.SyncId}.");
+                foreach (var entity in chunk)
+                {
+                    try
+                    {
+                        var response = await _cloudSyncClient.UpsertVehiclesAsync([ToRow(entity)], cancellationToken);
+                        Accept(response, entity, result);
+                    }
+                    catch (CloudUniqueConstraintException)
+                    {
+                        result.Conflicts++;
+                        if (_syncReconciler is not null)
+                        {
+                            await _syncReconciler.ResolveVehicleAsync(dbContext, entity, result, cancellationToken);
+                        }
+                    }
+                }
             }
         }
     }
@@ -128,22 +142,23 @@ public sealed class SyncEngine(
     private async Task PushPromotionsAsync(PlateGuardDbContext dbContext, SyncResult result, CancellationToken cancellationToken)
     {
         var entities = await dbContext.Promotions.IgnoreQueryFilters().Where(entity => entity.IsDirty).ToListAsync(cancellationToken);
-        foreach (var entity in entities)
+        foreach (var chunk in entities.Chunk(500))
         {
             try
             {
-                var response = await _cloudSyncClient.UpsertPromotionsAsync([ToRow(entity)], cancellationToken);
-                if (TryAccept(response, entity.SyncId, out var updatedAtUtc))
+                var response = await _cloudSyncClient.UpsertPromotionsAsync(chunk.Select(ToRow).ToList(), cancellationToken);
+                foreach (var entity in chunk)
                 {
-                    entity.IsDirty = false;
-                    entity.UpdatedAt = updatedAtUtc ?? entity.UpdatedAt;
-                    result.PromotionsPushed++;
+                    if (TryAccept(response, entity.SyncId, out var updatedAtUtc)) { entity.IsDirty = false; entity.UpdatedAt = updatedAtUtc ?? entity.UpdatedAt; result.PromotionsPushed++; }
                 }
             }
             catch (CloudUniqueConstraintException)
             {
-                result.Conflicts++;
-                _syncLog.Info($"Cloud sync conflict for promotion {entity.SyncId}.");
+                foreach (var entity in chunk)
+                {
+                    try { var response = await _cloudSyncClient.UpsertPromotionsAsync([ToRow(entity)], cancellationToken); if (TryAccept(response, entity.SyncId, out var updatedAtUtc)) { entity.IsDirty = false; entity.UpdatedAt = updatedAtUtc ?? entity.UpdatedAt; result.PromotionsPushed++; } }
+                    catch (CloudUniqueConstraintException) { result.Conflicts++; result.ConflictsUnresolved++; }
+                }
             }
         }
     }
@@ -151,32 +166,32 @@ public sealed class SyncEngine(
     private async Task PushPromotionUsagesAsync(PlateGuardDbContext dbContext, SyncResult result, CancellationToken cancellationToken)
     {
         var entities = await dbContext.PromotionUsages.IgnoreQueryFilters().Where(entity => entity.IsDirty).ToListAsync(cancellationToken);
-        foreach (var entity in entities)
+        foreach (var chunk in entities.Chunk(500))
         {
-            var vehicle = await dbContext.Vehicles.IgnoreQueryFilters().SingleOrDefaultAsync(candidate => candidate.Id == entity.VehicleId, cancellationToken);
-            var promotion = await dbContext.Promotions.IgnoreQueryFilters().SingleOrDefaultAsync(candidate => candidate.Id == entity.PromotionId, cancellationToken);
-            if (vehicle is null || promotion is null)
-            {
-                result.Deferred++;
-                continue;
-            }
-
             try
             {
-                var response = await _cloudSyncClient.UpsertPromotionUsagesAsync([ToRow(entity, vehicle.SyncId, promotion.SyncId)], cancellationToken);
-                if (TryAccept(response, entity.SyncId, out var updatedAtUtc))
+                var rows = new List<PromotionUsageRow>();
+                foreach (var entity in chunk) { var vehicle = await dbContext.Vehicles.IgnoreQueryFilters().SingleAsync(v => v.Id == entity.VehicleId, cancellationToken); var promotion = await dbContext.Promotions.IgnoreQueryFilters().SingleAsync(p => p.Id == entity.PromotionId, cancellationToken); rows.Add(ToRow(entity, vehicle.SyncId, promotion.SyncId)); }
+                var response = await _cloudSyncClient.UpsertPromotionUsagesAsync(rows, cancellationToken);
+                foreach (var entity in chunk)
                 {
-                    entity.IsDirty = false;
-                    entity.UpdatedAt = updatedAtUtc ?? entity.UpdatedAt;
-                    result.PromotionUsagesPushed++;
+                    if (TryAccept(response, entity.SyncId, out var updatedAtUtc)) { entity.IsDirty = false; entity.UpdatedAt = updatedAtUtc ?? entity.UpdatedAt; result.PromotionUsagesPushed++; }
                 }
             }
             catch (CloudUniqueConstraintException)
             {
-                result.Conflicts++;
-                _syncLog.Info($"Cloud sync conflict for promotion usage {entity.SyncId}.");
+                foreach (var entity in chunk)
+                {
+                    try { var vehicle = await dbContext.Vehicles.IgnoreQueryFilters().SingleAsync(v => v.Id == entity.VehicleId, cancellationToken); var promotion = await dbContext.Promotions.IgnoreQueryFilters().SingleAsync(p => p.Id == entity.PromotionId, cancellationToken); var response = await _cloudSyncClient.UpsertPromotionUsagesAsync([ToRow(entity, vehicle.SyncId, promotion.SyncId)], cancellationToken); if (TryAccept(response, entity.SyncId, out var updatedAtUtc)) { entity.IsDirty = false; entity.UpdatedAt = updatedAtUtc ?? entity.UpdatedAt; result.PromotionUsagesPushed++; } }
+                    catch (CloudUniqueConstraintException) { result.Conflicts++; if (_syncReconciler is not null) await _syncReconciler.ResolvePromotionUsageAsync(dbContext, entity, result, cancellationToken); }
+                }
             }
         }
+    }
+
+    private static void Accept(CloudUpsertResult response, VehicleEntity entity, SyncResult result)
+    {
+        if (TryAccept(response, entity.SyncId, out var updatedAtUtc)) { entity.IsDirty = false; entity.UpdatedAt = updatedAtUtc ?? entity.UpdatedAt; result.VehiclesPushed++; }
     }
 
     private static async Task PullVehicleAsync(PlateGuardDbContext dbContext, VehicleRow row, SyncResult result, CancellationToken cancellationToken)

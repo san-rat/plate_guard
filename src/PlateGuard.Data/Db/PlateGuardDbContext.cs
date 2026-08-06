@@ -10,6 +10,7 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
     public DbSet<PromotionEntity> Promotions => Set<PromotionEntity>();
     public DbSet<PromotionUsageEntity> PromotionUsages => Set<PromotionUsageEntity>();
     public DbSet<SettingsEntity> Settings => Set<SettingsEntity>();
+    public DbSet<SyncConflictEntity> SyncConflicts => Set<SyncConflictEntity>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -24,6 +25,7 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
         ConfigurePromotions(modelBuilder.Entity<PromotionEntity>());
         ConfigurePromotionUsages(modelBuilder.Entity<PromotionUsageEntity>());
         ConfigureSettings(modelBuilder.Entity<SettingsEntity>());
+        ConfigureSyncConflicts(modelBuilder.Entity<SyncConflictEntity>());
     }
 
     private static void ConfigureVehicles(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VehicleEntity> builder)
@@ -160,5 +162,15 @@ public sealed class PlateGuardDbContext(DbContextOptions<PlateGuardDbContext> op
 
         builder.Property(settings => settings.CreatedAt)
             .IsRequired();
+    }
+
+    private static void ConfigureSyncConflicts(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<SyncConflictEntity> builder)
+    {
+        builder.ToTable("SyncConflicts");
+        builder.HasKey(conflict => conflict.Id);
+        builder.Property(conflict => conflict.Kind).IsRequired();
+        builder.Property(conflict => conflict.Details).IsRequired();
+        builder.Property(conflict => conflict.DetectedAtUtc).IsRequired();
+        builder.Property(conflict => conflict.IsAcknowledged).IsRequired().HasDefaultValue(false);
     }
 }

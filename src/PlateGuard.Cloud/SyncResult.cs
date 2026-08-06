@@ -17,6 +17,8 @@ public sealed class SyncResult
     public int PromotionsPulled { get; set; }
     public int PromotionUsagesPulled { get; set; }
     public int Conflicts { get; set; }
+    public int ConflictsResolved { get; set; }
+    public int ConflictsUnresolved { get; set; }
     public int Deferred { get; set; }
     public string? ErrorMessage { get; set; }
 }

@@ -14,6 +14,7 @@ internal sealed class FakeCloudSyncClient : ICloudSyncClient
     public HashSet<Guid> RejectedVehicleSyncIds { get; } = [];
     public int SignInCalls { get; private set; }
     public int FetchCalls { get; private set; }
+    public int VehicleUpsertCalls { get; private set; }
 
     public int TotalCalls => SignInCalls + FetchCalls + ReceivedVehicles.Count + ReceivedPromotions.Count + ReceivedPromotionUsages.Count;
 
@@ -41,8 +42,19 @@ internal sealed class FakeCloudSyncClient : ICloudSyncClient
         return Task.FromResult<IReadOnlyList<PromotionUsageRow>>(FilterChanged(PromotionUsageRows, changedAfterUtc));
     }
 
+    public Task<VehicleRow?> FindLiveVehicleByNormalizedNumberAsync(string vehicleNumberNormalized, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(VehicleRows.SingleOrDefault(row => !row.IsDeleted && row.VehicleNumberNormalized == vehicleNumberNormalized));
+    }
+
+    public Task<PromotionUsageRow?> FindLivePromotionUsageAsync(Guid vehicleSyncId, Guid promotionSyncId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(PromotionUsageRows.SingleOrDefault(row => !row.IsDeleted && row.VehicleSyncId == vehicleSyncId && row.PromotionSyncId == promotionSyncId));
+    }
+
     public Task<CloudUpsertResult> UpsertVehiclesAsync(IReadOnlyCollection<VehicleRow> rows, CancellationToken cancellationToken = default)
     {
+        VehicleUpsertCalls++;
         ReceivedVehicles.AddRange(rows);
         var rejected = rows.FirstOrDefault(row => RejectedVehicleSyncIds.Contains(row.SyncId));
         if (rejected is not null)
