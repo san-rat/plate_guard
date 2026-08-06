@@ -12,9 +12,11 @@ internal sealed class FakeCloudSyncClient : ICloudSyncClient
     public List<PromotionRow> ReceivedPromotions { get; } = [];
     public List<PromotionUsageRow> ReceivedPromotionUsages { get; } = [];
     public HashSet<Guid> RejectedVehicleSyncIds { get; } = [];
+    public HashSet<Guid> RejectedPromotionUsageSyncIds { get; } = [];
     public int SignInCalls { get; private set; }
     public int FetchCalls { get; private set; }
     public int VehicleUpsertCalls { get; private set; }
+    public int PromotionUsageUpsertCalls { get; private set; }
 
     public int TotalCalls => SignInCalls + FetchCalls + ReceivedVehicles.Count + ReceivedPromotions.Count + ReceivedPromotionUsages.Count;
 
@@ -73,7 +75,14 @@ internal sealed class FakeCloudSyncClient : ICloudSyncClient
 
     public Task<CloudUpsertResult> UpsertPromotionUsagesAsync(IReadOnlyCollection<PromotionUsageRow> rows, CancellationToken cancellationToken = default)
     {
+        PromotionUsageUpsertCalls++;
         ReceivedPromotionUsages.AddRange(rows);
+        var rejected = rows.FirstOrDefault(row => RejectedPromotionUsageSyncIds.Contains(row.SyncId));
+        if (rejected is not null)
+        {
+            throw new CloudUniqueConstraintException(rejected.SyncId, new InvalidOperationException("Unique violation."));
+        }
+
         return Task.FromResult(Accept(rows, row => row.SyncId, row => row.UpdatedAtUtc));
     }
 

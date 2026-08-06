@@ -32,10 +32,11 @@ public sealed class SyncReconciler(ICloudSyncClient cloudSyncClient)
                     usage.DeletedAtUtc ??= DateTime.UtcNow;
                     AddConflict(dbContext, "DuplicateRedemption", usage.SyncId, null, local.VehicleNumberRaw, null, usage.ServiceDate, "A duplicate redemption was dropped while merging duplicate vehicles.");
                 }
-                else
-                {
-                    usage.VehicleId = survivor.Id;
-                }
+
+                // Every child moves, dropped ones included: the foreign key is ON DELETE RESTRICT,
+                // so a usage left pointing at the losing vehicle fails the whole sync. Soft-deleted
+                // rows are outside the filtered unique index, so reparenting them cannot collide.
+                usage.VehicleId = survivor.Id;
             }
 
             dbContext.Vehicles.Remove(local);
