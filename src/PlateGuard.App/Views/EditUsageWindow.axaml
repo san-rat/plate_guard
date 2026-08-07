@@ -10,10 +10,11 @@
         d:DesignHeight="700"
         Title="Edit Usage"
         Width="840"
-        Height="700"
+        SizeToContent="Height"
         MinWidth="760"
         MinHeight="620"
-        CanResize="False"
+        MaxHeight="900"
+        CanResize="True"
         WindowStartupLocation="CenterOwner">
 
     <Design.DataContext>

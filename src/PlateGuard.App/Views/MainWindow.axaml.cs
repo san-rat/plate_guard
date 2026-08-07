@@ -1,6 +1,8 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
+using Avalonia.Platform.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using PlateGuard.App.ViewModels;
 
@@ -27,9 +29,11 @@ public partial class MainWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+        // Bottom-right, not top-right: this window extends its client area into the title bar,
+        // so a top-right toast covers the minimise/maximise/close buttons and the promotion picker.
         _notificationManager = new WindowNotificationManager(this)
         {
-            Position = NotificationPosition.TopRight,
+            Position = NotificationPosition.BottomRight,
             MaxItems = 3
         };
         SearchInputTextBox?.Focus();
@@ -44,6 +48,7 @@ public partial class MainWindow : Window
             _viewModel.EditUsageRequested -= OnEditUsageRequested;
             _viewModel.DeleteUsageRequested -= OnDeleteUsageRequested;
             _viewModel.NotificationRequested -= OnNotificationRequested;
+            _viewModel.ExportFolderBrowseRequested -= OnExportFolderBrowseRequestedAsync;
         }
 
         base.OnClosed(e);
@@ -58,6 +63,7 @@ public partial class MainWindow : Window
             _viewModel.EditUsageRequested -= OnEditUsageRequested;
             _viewModel.DeleteUsageRequested -= OnDeleteUsageRequested;
             _viewModel.NotificationRequested -= OnNotificationRequested;
+            _viewModel.ExportFolderBrowseRequested -= OnExportFolderBrowseRequestedAsync;
         }
 
         _viewModel = DataContext as MainWindowViewModel;
@@ -69,7 +75,19 @@ public partial class MainWindow : Window
             _viewModel.EditUsageRequested += OnEditUsageRequested;
             _viewModel.DeleteUsageRequested += OnDeleteUsageRequested;
             _viewModel.NotificationRequested += OnNotificationRequested;
+            _viewModel.ExportFolderBrowseRequested += OnExportFolderBrowseRequestedAsync;
         }
+    }
+
+    private async Task<string?> OnExportFolderBrowseRequestedAsync()
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Choose the default export folder",
+            AllowMultiple = false
+        });
+
+        return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
     }
 
     private void OnNotificationRequested((string Message, bool IsError) notification)

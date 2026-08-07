@@ -54,6 +54,9 @@ public sealed partial class SyncSectionViewModel : ViewModelBase
     private string lastSyncedText = "Never";
 
     [ObservableProperty]
+    private string nextSyncText = "-";
+
+    [ObservableProperty]
     private string lastResultText = "No sync attempt yet.";
 
     [ObservableProperty]
@@ -64,6 +67,15 @@ public sealed partial class SyncSectionViewModel : ViewModelBase
 
     [ObservableProperty]
     private int unacknowledgedConflictCount;
+
+    public string UnacknowledgedConflictText => UnacknowledgedConflictCount == 1
+        ? "1 unacknowledged conflict"
+        : $"{UnacknowledgedConflictCount} unacknowledged conflicts";
+
+    partial void OnUnacknowledgedConflictCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(UnacknowledgedConflictText));
+    }
 
     [ObservableProperty]
     private bool hasUnacknowledgedConflicts;
@@ -124,6 +136,26 @@ public sealed partial class SyncSectionViewModel : ViewModelBase
         });
     }
 
+    // "Last synced: Never" alone leaves the operator unable to tell whether sync is working at
+    // all, so the six-hourly cadence is stated explicitly rather than left implicit.
+    private string DescribeNextSync(DateTime? lastSyncedAtUtc)
+    {
+        if (!IsConfigured)
+        {
+            return "Not scheduled";
+        }
+
+        if (lastSyncedAtUtc is null)
+        {
+            return "As soon as the app can reach the cloud";
+        }
+
+        var dueAtUtc = lastSyncedAtUtc.Value + SyncScheduler.SyncPeriod;
+        return dueAtUtc <= DateTime.UtcNow
+            ? "Due now"
+            : dueAtUtc.ToLocalTime().ToString("g");
+    }
+
     // Raised from the sync background thread while the engine is writing to the same SQLite
     // file, so this can genuinely fail. An unobserved throw here would land on the dispatcher.
     private async Task RefreshConflictsSafelyAsync()
@@ -174,11 +206,12 @@ public sealed partial class SyncSectionViewModel : ViewModelBase
         LastSyncedText = state.LastSyncedAtUtc?.ToLocalTime().ToString("g") ?? "Never";
         LastErrorMessage = state.LastErrorMessage;
         HasLastError = !string.IsNullOrWhiteSpace(LastErrorMessage);
+        NextSyncText = DescribeNextSync(state.LastSyncedAtUtc);
 
         if (!IsConfigured)
         {
             SyncStatusText = "Cloud sync is unconfigured";
-            LastResultText = "Cloud sync is unavailable until it is configured.";
+            LastResultText = "Set the PlateGuard Supabase environment variables and restart the app to enable cloud sync.";
             return;
         }
 
