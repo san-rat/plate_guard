@@ -23,12 +23,16 @@ public partial class MainWindowViewModel : ViewModelBase
     private AppSettings? _loadedSettings;
     private CancellationTokenSource? _searchDebounceCts;
     private bool _suppressSearchTextChanged;
+    private bool _isAutoSelectingVehicle;
 
     public event Action<AddUsageDialogRequest>? AddUsageRequested;
     public event Action<PromotionDialogRequest>? PromotionDialogRequested;
     public event Action<EditUsageDialogRequest>? EditUsageRequested;
     public event Action<DeleteUsageDialogRequest>? DeleteUsageRequested;
     public event Action<(string Message, bool IsError)>? NotificationRequested;
+
+    // The folder picker needs the window's StorageProvider, so the view supplies the result.
+    public event Func<Task<string?>>? ExportFolderBrowseRequested;
 
     public ObservableCollection<Promotion> ActivePromotions { get; } = [];
     public ObservableCollection<PromotionManagementItemViewModel> PromotionManagementItems { get; } = [];
@@ -70,8 +74,17 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private Promotion? selectedPromotion;
 
-    [ObservableProperty]
     private Vehicle? selectedVehicle;
+
+    public Vehicle? SelectedVehicle
+    {
+        get => selectedVehicle;
+        set
+        {
+            SetProperty(ref selectedVehicle, value);
+            OnSelectedVehicleChanged(value);
+        }
+    }
 
     [ObservableProperty]
     private string statusMessage = "Loading promotions...";
@@ -140,6 +153,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool canAddUsage;
 
     [ObservableProperty]
+    private bool isVehicleSelectionConfirmed;
+
+    [ObservableProperty]
     private bool isEligibilityPositive;
 
     [ObservableProperty]
@@ -203,10 +219,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private string historySearchText = string.Empty;
 
     [ObservableProperty]
-    private string historyDateFromText = string.Empty;
+    private DateTimeOffset? historyDateFrom;
 
     [ObservableProperty]
-    private string historyDateToText = string.Empty;
+    private DateTimeOffset? historyDateTo;
 
     [ObservableProperty]
     private string historyRecordsSummary = "Records will appear here.";
@@ -293,6 +309,23 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public string SettingsExportFolderHint => "Leave blank to use the default Documents/PlateGuard Exports folder.";
 
+    [RelayCommand]
+    private async Task BrowseExportFolderAsync()
+    {
+        if (ExportFolderBrowseRequested is null)
+        {
+            return;
+        }
+
+        var selectedFolder = await ExportFolderBrowseRequested.Invoke();
+        if (!string.IsNullOrWhiteSpace(selectedFolder))
+        {
+            SettingsExportFolder = selectedFolder;
+        }
+    }
+
+    public bool CanCreateVehicleFromEmptyState => SelectedPromotion is not null && string.IsNullOrWhiteSpace(SearchText);
+
     public MainWindowViewModel()
     {
         // Design-time data only.
@@ -309,7 +342,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Brand = "Toyota",
             Model = "Corolla"
         });
-        SelectedVehicle = SearchResults[0];
+        SetSelectedVehicleAutomatically(SearchResults[0]);
         SelectedVehicleHistory.Add(new UsageHistoryItemViewModel("New Year Promo", DateTime.Today, "5000.00"));
         HasSearchResults = true;
         HasNoSearchResults = false;
@@ -413,6 +446,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string value)
     {
+        OnPropertyChanged(nameof(CanCreateVehicleFromEmptyState));
+        IsVehicleSelectionConfirmed = false;
+
         if (_suppressSearchTextChanged)
         {
             return;
@@ -448,14 +484,24 @@ public partial class MainWindowViewModel : ViewModelBase
         _ = ExecuteSearchAsync(SearchText, CancellationToken.None);
     }
 
-    partial void OnSelectedVehicleChanged(Vehicle? value)
+    private void OnSelectedVehicleChanged(Vehicle? value)
     {
+        IsVehicleSelectionConfirmed = !_isAutoSelectingVehicle;
         UpdateSelectedVehicleSummary(value);
         _ = RefreshSelectionStateAsync();
     }
 
+    partial void OnIsVehicleSelectionConfirmedChanged(bool value)
+    {
+        if (HasSearchResults && !value)
+        {
+            CanAddUsage = false;
+        }
+    }
+
     partial void OnSelectedPromotionChanged(Promotion? value)
     {
+        OnPropertyChanged(nameof(CanCreateVehicleFromEmptyState));
         UpdateSelectedPromotionSummary(value);
         _ = RefreshSelectionStateAsync();
     }
@@ -570,8 +616,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task ClearHistoryFiltersAsync()
     {
         HistorySearchText = string.Empty;
-        HistoryDateFromText = string.Empty;
-        HistoryDateToText = string.Empty;
+        HistoryDateFrom = null;
+        HistoryDateTo = null;
         SelectedHistoryPromotionFilter = HistoryPromotionFilters.FirstOrDefault();
         await LoadHistoryRecordsAsync();
     }
@@ -745,7 +791,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void AddUsage()
     {
-        if (!CanAddUsage || SelectedPromotion is null)
+        if ((!CanAddUsage && !CanCreateVehicleFromEmptyState) || SelectedPromotion is null)
         {
             return;
         }
@@ -997,7 +1043,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 HasSearchResults = false;
                 HasNoSearchResults = true;
-                SelectedVehicle = null;
+                SetSelectedVehicleAutomatically(null);
                 SelectedVehicleHistory.Clear();
                 HasHistory = false;
                 HasNoHistory = true;
@@ -1016,9 +1062,10 @@ public partial class MainWindowViewModel : ViewModelBase
             HasNoSearchResults = false;
             EmptyStateTitle = string.Empty;
             EmptyStateMessage = string.Empty;
-            ResultsSummary = $"Found {SearchResults.Count} matching vehicle(s).";
-            StatusMessage = $"Found {SearchResults.Count} matching vehicle(s).";
-            SelectedVehicle = SearchResults[0];
+            var matchSummary = $"Found {SearchResults.Count} matching {Plural(SearchResults.Count, "vehicle", "vehicles")}.";
+            ResultsSummary = matchSummary;
+            StatusMessage = matchSummary;
+            SetSelectedVehicleAutomatically(SearchResults[0]);
         }
         catch (OperationCanceledException)
         {
@@ -1029,7 +1076,7 @@ public partial class MainWindowViewModel : ViewModelBase
             SearchResults.Clear();
             HasSearchResults = false;
             HasNoSearchResults = true;
-            SelectedVehicle = null;
+            SetSelectedVehicleAutomatically(null);
             SelectedVehicleHistory.Clear();
             HasHistory = false;
             HasNoHistory = true;
@@ -1094,7 +1141,7 @@ public partial class MainWindowViewModel : ViewModelBase
             HasHistory = SelectedVehicleHistory.Count > 0;
             HasNoHistory = !HasHistory;
             HistorySummary = HasHistory
-                ? $"{SelectedVehicleHistory.Count} promotion usage record(s) for this vehicle."
+                ? $"{SelectedVehicleHistory.Count} promotion usage {Plural(SelectedVehicleHistory.Count, "record", "records")} for this vehicle."
                 : "No promotion usage records for this vehicle yet.";
             HistoryEmptyStateMessage = "This vehicle has not used any tracked promotion yet.";
 
@@ -1176,8 +1223,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         await ExecuteSearchAsync(query, CancellationToken.None, SearchMode.VehicleNumber);
 
-        SelectedVehicle = SearchResults.FirstOrDefault(vehicle => vehicle.Id == result.Vehicle.Id)
-            ?? SearchResults.FirstOrDefault();
+        SetSelectedVehicleAutomatically(
+            SearchResults.FirstOrDefault(vehicle => vehicle.Id == result.Vehicle.Id)
+            ?? SearchResults.FirstOrDefault());
 
         StatusMessage = result.Message;
     }
@@ -1221,7 +1269,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SearchResults.Clear();
         HasSearchResults = false;
         HasNoSearchResults = true;
-        SelectedVehicle = null;
+        SetSelectedVehicleAutomatically(null);
         SelectedVehicleHistory.Clear();
         HasHistory = false;
         HasNoHistory = true;
@@ -1258,6 +1306,19 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedVehicleBrandModel = string.IsNullOrWhiteSpace(vehicle.Brand) && string.IsNullOrWhiteSpace(vehicle.Model)
             ? "-"
             : $"{vehicle.Brand} {vehicle.Model}".Trim();
+    }
+
+    private void SetSelectedVehicleAutomatically(Vehicle? vehicle)
+    {
+        _isAutoSelectingVehicle = true;
+        try
+        {
+            SelectedVehicle = vehicle;
+        }
+        finally
+        {
+            _isAutoSelectingVehicle = false;
+        }
     }
 
     private void UpdateSelectedPromotionSummary(Promotion? promotion)
@@ -1379,7 +1440,7 @@ public partial class MainWindowViewModel : ViewModelBase
             HasHistoryRecords = HistoryRecords.Count > 0;
             HasNoHistoryRecords = !HasHistoryRecords;
             HistoryRecordsSummary = HasHistoryRecords
-                ? $"{HistoryRecords.Count} record(s) found."
+                ? $"{HistoryRecords.Count} {Plural(HistoryRecords.Count, "record", "records")} found."
                 : "No records matched the current filters.";
 
             if (!HasHistoryRecords)
@@ -1494,15 +1555,9 @@ public partial class MainWindowViewModel : ViewModelBase
             PromotionId = SelectedHistoryPromotionFilter?.PromotionId
         };
 
-        if (!TryParseOptionalFilterDate(HistoryDateFromText, out var dateFrom))
-        {
-            return "From date must be a valid date in yyyy-MM-dd format.";
-        }
-
-        if (!TryParseOptionalFilterDate(HistoryDateToText, out var dateTo))
-        {
-            return "To date must be a valid date in yyyy-MM-dd format.";
-        }
+        // Pickers cannot produce an unparseable value, so only the ordering needs checking.
+        var dateFrom = HistoryDateFrom?.Date;
+        var dateTo = HistoryDateTo?.Date;
 
         if (dateFrom.HasValue && dateTo.HasValue && dateTo.Value.Date < dateFrom.Value.Date)
         {
@@ -1567,23 +1622,24 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         EligibilityTitle = title;
         EligibilityMessage = message;
-        CanAddUsage = canAddUsage;
+        CanAddUsage = canAddUsage && (!HasSearchResults || IsVehicleSelectionConfirmed);
         IsEligibilityPositive = tone == EligibilityDisplayTone.Positive;
         IsEligibilityNegative = tone == EligibilityDisplayTone.Negative;
         IsEligibilityWarning = tone == EligibilityDisplayTone.Warning;
     }
 
+    // The normalized form is an internal lookup key. Showing it to counter staff as
+    // "AAA-1111 (AAA1111)" reads like a data error, so only the plate as entered is displayed.
     private static string FormatVehicleNumber(Vehicle vehicle)
     {
-        if (string.IsNullOrWhiteSpace(vehicle.VehicleNumberRaw))
-        {
-            return vehicle.VehicleNumberNormalized;
-        }
+        return string.IsNullOrWhiteSpace(vehicle.VehicleNumberRaw)
+            ? vehicle.VehicleNumberNormalized.ToUpperInvariant()
+            : vehicle.VehicleNumberRaw.Trim().ToUpperInvariant();
+    }
 
-        var raw = vehicle.VehicleNumberRaw.Trim();
-        return string.Equals(raw, vehicle.VehicleNumberNormalized, StringComparison.OrdinalIgnoreCase)
-            ? raw
-            : $"{raw} ({vehicle.VehicleNumberNormalized})";
+    private static string Plural(int count, string singular, string plural)
+    {
+        return count == 1 ? singular : plural;
     }
 
     private static string FormatPromotionWindow(Promotion promotion)
@@ -1595,25 +1651,6 @@ public partial class MainWindowViewModel : ViewModelBase
             (null, DateTime endDate) => $"Ends {endDate:yyyy-MM-dd}",
             _ => string.Empty
         };
-    }
-
-    private static bool TryParseOptionalFilterDate(string value, out DateTime? parsedDate)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            parsedDate = null;
-            return true;
-        }
-
-        if (DateTime.TryParseExact(value.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var exactDate) ||
-            DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out exactDate))
-        {
-            parsedDate = exactDate.Date;
-            return true;
-        }
-
-        parsedDate = null;
-        return false;
     }
 
     private SearchMode DetectSearchMode(string query)

@@ -10,9 +10,10 @@
         d:DesignHeight="360"
         Title="Delete Record"
         Width="600"
-        Height="360"
+        SizeToContent="Height"
         MinWidth="560"
         MinHeight="320"
+        MaxHeight="900"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
 
@@ -21,8 +22,9 @@
     </Design.DataContext>
 
     <Grid RowDefinitions="*,Auto">
-        <StackPanel Margin="24"
-                    Spacing="18">
+        <ScrollViewer Grid.Row="0">
+            <StackPanel Margin="24"
+                        Spacing="18">
             <Border Classes="statusBanner negative"
                     Padding="16">
                 <StackPanel Spacing="6">
@@ -70,7 +72,8 @@
                 <TextBlock Text="{Binding StatusMessage}"
                            Classes="muted"/>
             </Border>
-        </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
 
         <Border Grid.Row="1"
                 Background="{StaticResource BrushSurface}"

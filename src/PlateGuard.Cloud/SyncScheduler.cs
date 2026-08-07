@@ -9,7 +9,7 @@ public sealed class SyncScheduler(
     PlateGuardDbContextFactory dbContextFactory,
     ISyncLog syncLog) : IAsyncDisposable
 {
-    private static readonly TimeSpan SyncPeriod = TimeSpan.FromHours(6);
+    public static readonly TimeSpan SyncPeriod = TimeSpan.FromHours(6);
     private readonly ISyncEngine _syncEngine = syncEngine;
     private readonly PlateGuardDbContextFactory _dbContextFactory = dbContextFactory;
     private readonly ISyncLog _syncLog = syncLog;

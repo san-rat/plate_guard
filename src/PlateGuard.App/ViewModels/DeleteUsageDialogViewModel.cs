@@ -41,9 +41,9 @@ public partial class DeleteUsageDialogViewModel : ViewModelBase
     {
         _promotionUsageService = promotionUsageService;
         _promotionUsageId = request.Record.PromotionUsageId;
-        VehicleNumberDisplay = string.IsNullOrWhiteSpace(request.Record.VehicleNumberRaw)
+        VehicleNumberDisplay = (string.IsNullOrWhiteSpace(request.Record.VehicleNumberRaw)
             ? request.Record.VehicleNumberNormalized
-            : request.Record.VehicleNumberRaw;
+            : request.Record.VehicleNumberRaw.Trim()).ToUpperInvariant();
         PromotionName = request.Record.PromotionName;
     }
 

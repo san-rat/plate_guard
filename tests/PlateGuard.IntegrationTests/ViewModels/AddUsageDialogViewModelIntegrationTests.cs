@@ -156,6 +156,7 @@ public sealed class AddUsageDialogViewModelIntegrationTests
 
         viewModel.VehicleNumberRaw = "CAB-3001";
         viewModel.PhoneNumber = "0773003001";
+        viewModel.OwnerName = "Date Promo Owner";
         viewModel.ServiceDate = new DateTimeOffset(2026, 5, 12, 15, 30, 0, TimeSpan.Zero);
 
         await viewModel.SaveCommand.ExecuteAsync(null);
@@ -165,5 +166,40 @@ public sealed class AddUsageDialogViewModelIntegrationTests
         var records = await promotionUsageService.SearchUsageRecordsAsync(new PromotionUsageRecordQuery());
         var savedRecord = Assert.Single(records);
         Assert.Equal(new DateTime(2026, 5, 12), savedRecord.ServiceDate);
+    }
+
+    [Fact]
+    public async Task Save_WithoutOwnerName_IsRejectedAndWritesNothing()
+    {
+        await using var app = await IntegrationTestApp.CreateAsync();
+
+        var promotionService = app.GetRequiredService<IPromotionService>();
+        var promotionUsageService = app.GetRequiredService<IPromotionUsageService>();
+        var vehicleService = app.GetRequiredService<IVehicleService>();
+
+        var promotion = await promotionService.CreateAsync(new Promotion
+        {
+            PromotionName = "Owner Required Promo",
+            IsActive = true
+        });
+
+        var viewModel = new AddUsageDialogViewModel(
+            promotionUsageService,
+            vehicleService,
+            new AddUsageDialogRequest
+            {
+                SelectedPromotion = promotion,
+                AvailablePromotions = [promotion]
+            });
+
+        viewModel.VehicleNumberRaw = "CAB-4002";
+        viewModel.PhoneNumber = "0774004002";
+        viewModel.OwnerName = string.Empty;
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.Null(viewModel.LastSaveResult);
+        Assert.Equal("Owner name is required.", viewModel.StatusMessage);
+        Assert.Empty(await promotionUsageService.SearchUsageRecordsAsync(new PromotionUsageRecordQuery()));
     }
 }
