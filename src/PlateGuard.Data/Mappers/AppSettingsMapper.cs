@@ -13,6 +13,7 @@ internal static class AppSettingsMapper
             DeletePasswordHash = entity.DeletePasswordHash,
             ShopName = entity.ShopName,
             ExportFolder = entity.ExportFolder,
+            LastSyncedAtUtc = entity.LastSyncedAtUtc,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
@@ -26,6 +27,7 @@ internal static class AppSettingsMapper
             DeletePasswordHash = model.DeletePasswordHash ?? string.Empty,
             ShopName = model.ShopName,
             ExportFolder = model.ExportFolder,
+            LastSyncedAtUtc = model.LastSyncedAtUtc,
             CreatedAt = model.CreatedAt,
             UpdatedAt = model.UpdatedAt
         };

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PlateGuard.Data.Db;
 
@@ -10,9 +11,11 @@ using PlateGuard.Data.Db;
 namespace PlateGuard.Data.Migrations
 {
     [DbContext(typeof(PlateGuardDbContext))]
-    partial class PlateGuardDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260806075423_AddCloudSyncColumns")]
+    partial class AddCloudSyncColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -166,48 +169,6 @@ namespace PlateGuard.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Settings", (string)null);
-                });
-
-            modelBuilder.Entity("PlateGuard.Data.Entities.SyncConflictEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid?>("CloudSyncId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Details")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DetectedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsAcknowledged")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("LocalSyncId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PromotionName")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ServiceDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("VehicleNumberRaw")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("SyncConflicts", (string)null);
                 });
 
             modelBuilder.Entity("PlateGuard.Data.Entities.VehicleEntity", b =>

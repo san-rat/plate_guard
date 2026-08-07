@@ -95,6 +95,7 @@ public sealed class VehicleRepository(PlateGuardDbContextFactory dbContextFactor
         vehicle.UpdatedAt = DateTime.UtcNow;
         VehicleMapper.UpdateEntity(entity, vehicle);
         NormalizeVehicle(entity);
+        entity.IsDirty = true;
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

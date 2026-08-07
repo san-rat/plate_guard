@@ -3,6 +3,7 @@ namespace PlateGuard.Core.Models;
 public sealed class Vehicle
 {
     public int Id { get; set; }
+    public Guid SyncId { get; set; }
     public string VehicleNumberRaw { get; set; } = string.Empty;
     public string VehicleNumberNormalized { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;

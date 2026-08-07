@@ -108,12 +108,34 @@
                                        FontWeight="SemiBold"/>
                         </Grid>
                     </Button>
+
+                    <Button Classes="nav"
+                            Classes.selected="{Binding IsSyncSectionVisible}"
+                            Command="{Binding ShowSyncSectionCommand}"
+                            IsVisible="{Binding HasSyncSection}">
+                        <Grid ColumnDefinitions="18,*"
+                              ColumnSpacing="10">
+                            <TextBlock Classes="iconGlyph"
+                                       Text="&#xE72C;"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="Sync"
+                                       FontWeight="SemiBold"/>
+                        </Grid>
+                    </Button>
                 </StackPanel>
 
-                <TextBlock Grid.Row="2"
-                           Margin="16,0,16,16"
-                           Text="v1.0 · Local"
-                           Foreground="{StaticResource BrushSidebarMuted}"/>
+                <StackPanel Grid.Row="2"
+                            Margin="16,0,16,16"
+                            Spacing="2">
+                    <TextBlock Text="{Binding Sync.SyncStatusText}"
+                               Foreground="{StaticResource BrushSidebarMuted}"
+                               IsVisible="{Binding HasSyncSection}"/>
+                    <TextBlock Text="{Binding Sync.UnacknowledgedConflictCount, StringFormat={}{0} unacknowledged conflict(s)}"
+                               Foreground="{StaticResource BrushSidebarMuted}"
+                               IsVisible="{Binding Sync.HasUnacknowledgedConflicts}"/>
+                    <TextBlock Text="v1.0"
+                               Foreground="{StaticResource BrushSidebarMuted}"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -1042,6 +1064,144 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding IsSyncSectionVisible}"
+                            Spacing="18">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Sync"
+                                   Classes="pageTitle"/>
+                    </StackPanel>
+
+                    <Border Classes="surfaceCard"
+                            Padding="20">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="Cloud Sync"
+                                       Classes="sectionTitle"/>
+
+                            <Grid ColumnDefinitions="*,*"
+                                  ColumnSpacing="32"
+                                  RowDefinitions="Auto,Auto"
+                                  RowSpacing="14">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="STATUS"
+                                               Classes="label"/>
+                                    <TextBlock Text="{Binding Sync.SyncStatusText}"
+                                               Classes="value"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            Spacing="2">
+                                    <TextBlock Text="LAST SYNCED"
+                                               Classes="label"/>
+                                    <TextBlock Text="{Binding Sync.LastSyncedText}"
+                                               Classes="value"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1"
+                                            Spacing="2">
+                                    <TextBlock Text="LAST RESULT"
+                                               Classes="label"/>
+                                    <TextBlock Text="{Binding Sync.LastResultText}"
+                                               Classes="value"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="1"
+                                            Spacing="2"
+                                            IsVisible="{Binding Sync.HasLastError}">
+                                    <TextBlock Text="ERROR"
+                                               Classes="label"/>
+                                    <TextBlock Text="{Binding Sync.LastErrorMessage}"
+                                               Classes="value"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Button Classes="primary"
+                                    Width="128"
+                                    HorizontalAlignment="Left"
+                                    Command="{Binding Sync.SyncNowCommand}">
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="8"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center">
+                                    <TextBlock Classes="iconGlyph"
+                                               Text="&#xE72C;"/>
+                                    <TextBlock Text="Sync now"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="surfaceCard"
+                            Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="Unacknowledged Conflicts"
+                                       Classes="sectionTitle"/>
+
+                            <Grid>
+                                <ListBox IsVisible="{Binding Sync.HasUnacknowledgedConflicts}"
+                                         ItemsSource="{Binding Sync.Conflicts}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:SyncConflictItemViewModel">
+                                            <Border BorderBrush="{StaticResource BrushBorder}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="10,8">
+                                                <Grid ColumnDefinitions="*,Auto"
+                                                      ColumnSpacing="12">
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="{Binding Plate}"
+                                                                   Classes="value"/>
+                                                        <TextBlock Classes="muted">
+                                                            <Run Text="{Binding PromotionName}"/>
+                                                            <Run Text=" · "/>
+                                                            <Run Text="{Binding ServiceDateText}"/>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding Kind}"
+                                                                   Classes="subtle"/>
+                                                        <TextBlock Text="{Binding Details}"
+                                                                   Classes="muted"/>
+                                                    </StackPanel>
+
+                                                    <Button Grid.Column="1"
+                                                            Classes="secondary"
+                                                            Command="{Binding AcknowledgeCommand}">
+                                                        <TextBlock Text="Acknowledge"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <Grid IsVisible="{Binding Sync.HasNoUnacknowledgedConflicts}"
+                                      VerticalAlignment="Center"
+                                      HorizontalAlignment="Center"
+                                      Margin="0,40">
+                                    <shapes:Rectangle Stroke="#CBD5E1"
+                                                      StrokeThickness="2"
+                                                      StrokeDashArray="2,2"
+                                                      RadiusX="8"
+                                                      RadiusY="8"
+                                                      Fill="Transparent"/>
+                                    <StackPanel Margin="32,24"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Center"
+                                                Spacing="4">
+                                        <TextBlock Text="No unacknowledged conflicts"
+                                                   FontSize="17"
+                                                   FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"/>
+                                        <TextBlock Text="Any service records dropped during reconciliation appear here."
+                                                   Classes="muted"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

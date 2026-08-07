@@ -1,6 +1,7 @@
 ﻿using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using PlateGuard.App.Composition;
+using PlateGuard.Cloud;
 using PlateGuard.Data.Db;
 using System;
 
@@ -14,16 +15,36 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        using var serviceProvider = new ServiceCollection()
+        // Disposed explicitly instead of with `using`: the container holds SyncScheduler, which
+        // implements only IAsyncDisposable, and synchronous Dispose() throws on such a container.
+        // Main stays synchronous so Avalonia starts on the STA thread [STAThread] guarantees.
+        var serviceProvider = new ServiceCollection()
             .AddPlateGuardApplication()
             .BuildServiceProvider();
 
-        App.ConfigureServices(serviceProvider);
+        try
+        {
+            App.ConfigureServices(serviceProvider);
 
-        var databaseInitializer = serviceProvider.GetRequiredService<PlateGuardDatabaseInitializer>();
-        databaseInitializer.InitializeAsync().GetAwaiter().GetResult();
+            var databaseInitializer = serviceProvider.GetRequiredService<PlateGuardDatabaseInitializer>();
+            databaseInitializer.InitializeAsync().GetAwaiter().GetResult();
 
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            var syncScheduler = serviceProvider.GetRequiredService<SyncScheduler>();
+            syncScheduler.Start();
+
+            try
+            {
+                BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            }
+            finally
+            {
+                syncScheduler.StopAsync().GetAwaiter().GetResult();
+            }
+        }
+        finally
+        {
+            serviceProvider.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

@@ -10,6 +10,7 @@ internal static class PromotionUsageMapper
         return new PromotionUsage
         {
             Id = entity.Id,
+            SyncId = entity.SyncId,
             VehicleId = entity.VehicleId,
             PromotionId = entity.PromotionId,
             ServiceDate = entity.ServiceDate,
@@ -28,6 +29,7 @@ internal static class PromotionUsageMapper
         return new PromotionUsageEntity
         {
             Id = model.Id,
+            SyncId = model.SyncId == Guid.Empty ? Guid.NewGuid() : model.SyncId,
             VehicleId = model.VehicleId,
             PromotionId = model.PromotionId,
             ServiceDate = model.ServiceDate,
