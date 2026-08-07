@@ -2,7 +2,8 @@ param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     [string]$Version = "1.0.0",
-    [string]$IsccPath
+    [string]$IsccPath,
+    [string]$CloudSyncConfig
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,8 +45,30 @@ if (-not $IsccPath) {
     throw "Inno Setup compiler was not found. Install Inno Setup 6 or pass -IsccPath."
 }
 
+$isccArguments = @($InstallerScriptPath)
+
+if ($CloudSyncConfig) {
+    $resolvedCloudSyncConfig = (Resolve-Path -LiteralPath $CloudSyncConfig -ErrorAction Stop).Path
+
+    # Validated here rather than on the client's machine: a missing field produces an app that
+    # opens, saves records, and silently never syncs, which nobody notices until data is needed.
+    $requiredFields = @("supabaseUrl", "supabaseAnonKey", "serviceAccountEmail", "serviceAccountPassword")
+    $cloudSyncSettings = Get-Content -LiteralPath $resolvedCloudSyncConfig -Raw | ConvertFrom-Json
+    $missingFields = $requiredFields | Where-Object { [string]::IsNullOrWhiteSpace($cloudSyncSettings.$_) }
+    if ($missingFields) {
+        throw "$resolvedCloudSyncConfig is missing values for: $($missingFields -join ', ')."
+    }
+
+    $isccArguments += "/DCloudSyncConfigFile=$resolvedCloudSyncConfig"
+    Write-Host "Cloud sync settings: $resolvedCloudSyncConfig" -ForegroundColor Cyan
+    Write-Warning "The installer will contain this shop's Supabase password. Deliver it only to that shop."
+}
+else {
+    Write-Warning "No -CloudSyncConfig supplied. The installed app will run offline until cloud sync is configured."
+}
+
 Write-Host "Building Inno Setup installer..." -ForegroundColor Cyan
-& $IsccPath $InstallerScriptPath
+& $IsccPath $isccArguments
 if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
     throw "Inno Setup compiler failed with exit code $LASTEXITCODE."
 }

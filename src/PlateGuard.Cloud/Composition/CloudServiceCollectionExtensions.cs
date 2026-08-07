@@ -6,7 +6,7 @@ public static class CloudServiceCollectionExtensions
 {
     public static IServiceCollection AddPlateGuardCloud(this IServiceCollection services)
     {
-        services.AddSingleton(CloudSyncOptions.FromEnvironment());
+        services.AddSingleton(CloudSyncOptions.Load());
         services.AddSingleton<ISyncLog, TraceSyncLog>();
         services.AddSingleton<ICloudSyncClient, SupabaseCloudSyncClient>();
         services.AddSingleton<SyncReconciler>();

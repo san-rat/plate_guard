@@ -35,6 +35,15 @@ Installed by: ____________________
 - Export a CSV and confirm the file is created.
 - Confirm staff know which password is used for deletion.
 
+## Cloud Sync Check
+
+- Open `Settings` and find the Sync panel.
+- Confirm it does not say `Cloud sync is unconfigured`.
+- Press `Sync now` and wait for it to finish.
+- Confirm the result reads `Last sync completed successfully.`
+- Confirm the records appear in the Supabase project.
+- Explain that sync then runs by itself every 6 hours.
+
 ## Backup Readiness
 
 - Show the admin where `%LOCALAPPDATA%\PlateGuard\plateguard.db` is stored.
@@ -48,5 +57,6 @@ Installed by: ____________________
 - Promotion created
 - Usage record saved
 - CSV export verified
+- Cloud sync verified
 - Backup location explained
 - Delete password changed from default

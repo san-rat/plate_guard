@@ -30,6 +30,26 @@ Related files that may appear beside the database:
 3. If backed up, also restore the matching `-wal` and `-shm` files.
 4. Start PlateGuard and confirm the expected records are visible.
 
+## Cloud Sync
+
+Cloud sync copies records to a Supabase project so the data survives loss of the computer.
+
+- Sync runs automatically every 6 hours, and once at startup if more than 6 hours have passed.
+- The first sync after setup uploads every existing record, so it takes longer than later runs.
+- Sync is not a backup. Keep the local backup routine above regardless.
+- Settings come from `%LOCALAPPDATA%\PlateGuard\cloudsync.json`, written by the installer supplied for this shop.
+- The app reads that file once at startup, so PlateGuard must be restarted after the file changes.
+
+To check that sync is working, open `Settings` and look at the Sync panel:
+
+- `Cloud sync completed` with a recent Last Synced time means everything is working.
+- `Cloud sync is unconfigured` means the settings file is missing or incomplete; the panel states which.
+- `Cloud sync failed` means the settings are present but the upload did not succeed, usually no internet or a changed password.
+
+If the Supabase password is changed, the settings file is out of date. Either install the rebuilt setup file for this shop, or edit `cloudsync.json` and restart PlateGuard.
+
+The settings file contains the account password in plain text. Anyone who can sign in to this Windows user account can read it, so the Windows login on this computer is what protects it.
+
 ## Delete Password
 
 - Deleting a usage record makes the vehicle eligible for that promotion again.
@@ -84,8 +104,9 @@ Use deletion carefully because it changes eligibility.
 
 ## Uninstall Note
 
-- The installer removes the application files.
-- User data in `%LOCALAPPDATA%\PlateGuard` should be kept unless you delete it manually on purpose.
+- The installer removes the application files and the `cloudsync.json` settings file.
+- The database in `%LOCALAPPDATA%\PlateGuard` is kept unless you delete it manually on purpose.
+- Reinstalling from the setup file supplied for this shop restores the cloud sync settings.
 
 ## Demo Data Note
 

@@ -27,6 +27,12 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 
 [Files]
 Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Cloud sync settings are baked in per client by build-installer.ps1 -CloudSyncConfig, so the
+; shop only has to run setup. Builds without that switch still compile and simply ship offline.
+; The file sits beside the database rather than in {app} so an app upgrade cannot discard it.
+#ifdef CloudSyncConfigFile
+Source: "{#CloudSyncConfigFile}"; DestDir: "{localappdata}\PlateGuard"; DestName: "cloudsync.json"; Flags: ignoreversion
+#endif
 
 [Dirs]
 Name: "{localappdata}\PlateGuard"

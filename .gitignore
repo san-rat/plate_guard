@@ -500,3 +500,8 @@ builds/windows-release/
 
 # PlateGuard generated notes
 notes/final-qa-results.md
+
+# PlateGuard per-client cloud sync credentials. Never commit real values;
+# only installer/cloudsync.example.json is tracked.
+installer/clients/
+installer/cloudsync.json

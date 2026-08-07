@@ -1,0 +1,6 @@
+{
+  "supabaseUrl": "https://your-project-ref.supabase.co",
+  "supabaseAnonKey": "paste-the-anon-public-key-here",
+  "serviceAccountEmail": "plateguard-shopname@example.com",
+  "serviceAccountPassword": "the-password-for-that-supabase-user"
+}

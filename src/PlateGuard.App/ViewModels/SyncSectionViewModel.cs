@@ -211,7 +211,11 @@ public sealed partial class SyncSectionViewModel : ViewModelBase
         if (!IsConfigured)
         {
             SyncStatusText = "Cloud sync is unconfigured";
-            LastResultText = "Set the PlateGuard Supabase environment variables and restart the app to enable cloud sync.";
+            // A broken settings file is the one unconfigured case an operator can act on, so it
+            // is reported instead of the generic "not set up yet" guidance.
+            LastResultText = _options?.ConfigurationError is { } configurationError
+                ? configurationError
+                : $"Cloud sync settings are missing. Reinstall PlateGuard using the setup file supplied for this shop, or restore {CloudSyncOptions.GetConfigurationFilePath()}.";
             return;
         }
 
